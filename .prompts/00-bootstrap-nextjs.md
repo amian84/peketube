@@ -66,7 +66,7 @@ Inicializar el proyecto Next.js 14 (App Router, TS, Tailwind), añadir shadcn/ui
    - `build: next build`
    - `start: next start`
    - `lint`, `typecheck: tsc --noEmit`.
-9. Crear `.env.example` con `YOUTUBE_API_KEY=`, `GOOGLE_CLIENT_ID=`, `GOOGLE_CLIENT_SECRET=`, `NEXTAUTH_SECRET=`, `NEXTAUTH_URL=http://localhost:3000`.
+9. Crear `.env.example` con `GOOGLE_CLIENT_ID=`, `GOOGLE_CLIENT_SECRET=`, `AUTH_SECRET=`, `NEXTAUTH_URL=http://localhost:3000`. No se usa `YOUTUBE_API_KEY` (todas las llamadas a YouTube van con Bearer OAuth del usuario).
 10. `README.md` mínimo con setup y comandos.
 
 ## Criterios de aceptación

@@ -24,7 +24,7 @@ Login Google con NextAuth v5, scope `youtube.readonly`, refresh automático de a
 - **OQ-02-003 A:** `UserAvatar` en `AppTopBar` con nombre e imagen de Google (`next/image` + `lh3.googleusercontent.com`).
 - **OQ-02-004 A:** sin `signOut` en `/you`; texto indica que el cierre de sesión irá al panel parental (prompt 07).
 
-**Implementación:** `next-auth@5.0.0-beta.31`, `src/auth.ts`, `src/app/api/auth/[...nextauth]/route.ts`, `src/middleware.ts`, `AuthProvider`, `/sign-in`, `getYouTubeAccessToken` → `/api/yt/subscriptions`.
+**Implementación:** `next-auth@5.0.0-beta.31`, `src/auth.ts`, `src/app/api/auth/[...nextauth]/route.ts`, `src/middleware.ts`, `AuthProvider`, `/sign-in`, `getYouTubeAccessToken` → **todas** las rutas `/api/yt/*`.
 
 ## Pasos
 
@@ -44,7 +44,7 @@ Login Google con NextAuth v5, scope `youtube.readonly`, refresh automático de a
 3. Callback `jwt`: al primer login guarda `access_token`, `refresh_token`, `expires_at`. En llamadas posteriores, si `expires_at - 60s < now`, refrescar contra `https://oauth2.googleapis.com/token` con `grant_type=refresh_token`.
 4. Callback `session`: expone solo `user` y `error?: "RefreshAccessTokenError"` al cliente. NUNCA expone tokens.
 5. `src/app/api/auth/[...nextauth]/route.ts` → `export const { GET, POST } = handlers`.
-6. Helper `getYouTubeAccessToken()` server-side para Route Handlers que lo necesiten (`/api/yt/subscriptions`).
+6. Helper `getYouTubeAccessToken()` server-side para **todos** los Route Handlers `/api/yt/*` (no solo subscriptions; con login obligatorio, todas las llamadas a YouTube usan Bearer del usuario en vez de API key).
 7. Componente `<UserAvatar />` que llama `useSession()` → si autenticado muestra foto/nombre, si no muestra placeholder + botón login en menú "Tú".
 8. Página `/you` con CTA "Iniciar sesión con Google" cuando no hay sesión.
 
@@ -52,5 +52,5 @@ Login Google con NextAuth v5, scope `youtube.readonly`, refresh automático de a
 
 - Login funciona en `localhost:3000` y devuelve a la home.
 - Refresh automático sin pedir login otra vez.
-- `/api/yt/subscriptions` devuelve 401 si no hay sesión, 200 con datos si la hay.
+- Todas las rutas `/api/yt/*` devuelven 401 si no hay sesión, 200 con datos si la hay (Bearer del usuario, sin API key).
 - Avatar del usuario aparece en top bar cuando está logado.

@@ -9,7 +9,7 @@ Probar la PWA en `localhost` y, vía túnel HTTPS, instalarla en el móvil. Smok
 ## Prerequisites
 
 - Entorno de `setup-entorno-pc.md` completado.
-- `.env.local` con `YOUTUBE_API_KEY`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`.
+- `.env.local` con `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `AUTH_SECRET`, `NEXTAUTH_URL`. No se necesita `YOUTUBE_API_KEY` (todas las llamadas a YouTube usan Bearer OAuth del usuario).
 - Prompts `00`–`09` ejecutados.
 - **No implementation OQ gate.**
 
@@ -91,6 +91,6 @@ Cobertura mínima esperada:
 ### 6. Troubleshooting
 
 - **OAuth `redirect_uri_mismatch`**: la URL del túnel cambia cada vez con `cloudflared` sin cuenta. Solución: cuenta cloudflare con subdominio fijo, o añadir varias URLs autorizadas, o usar `ngrok` con dominio reservado.
-- **Cuota YouTube agotada**: revisar Google Cloud → APIs → Quotas. Aumentar TTL de cache o esperar reset diario.
+- **Cuota YouTube agotada**: revisar Google Cloud → APIs → Quotas. Aumentar TTL de cache o esperar reset diario. La cuota es por proyecto de Google Cloud, no por usuario.
 - **PWA no instalable**: revisar Lighthouse → todas las check de PWA deben estar verdes; manifest accesible en `/manifest.webmanifest`; HTTPS válido.
 - **Service Worker cacheando vídeo viejo**: DevTools → Application → Service Workers → Unregister + hard reload.

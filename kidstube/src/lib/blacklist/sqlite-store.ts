@@ -11,7 +11,7 @@ function dbFilePath(): string {
     process.env.KIDSTUBE_SERVER_DB_PATH?.trim() ||
     process.env.BLACKLIST_DB_PATH?.trim();
   if (fromEnv) return fromEnv;
-  return path.join(process.cwd(), "data", "kidstube-blacklist.sqlite");
+  return path.join(process.cwd(), "data", "kidstube.sqlite");
 }
 
 export function getBlacklistSqlite(): Database.Database {

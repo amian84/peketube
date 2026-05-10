@@ -4,9 +4,11 @@ import useSWR from "swr";
 import type { SearchFetchOptions } from "@/lib/yt/client";
 import {
   fetchFeedPage,
+  fetchRelatedVideos,
   fetchSearchPage,
   fetchSubscriptionsPage,
   fetchVideoById,
+  fetchVideoComments,
 } from "@/lib/yt/client";
 import type { PageDTO, VideoDTO } from "@/lib/yt/types";
 
@@ -46,6 +48,37 @@ export function useSubscriptions(pageToken?: string) {
 export function useVideo(id: string | null) {
   const key = id ? (["yt-video", id] as const) : null;
   return useSWR(key, () => fetchVideoById(id!), { revalidateOnFocus: false });
+}
+
+export function useRelated(
+  videoId: string | null,
+  title: string | null,
+  channelId: string | null,
+) {
+  const key =
+    videoId && channelId
+      ? (["yt-related", videoId, channelId, title ?? ""] as const)
+      : null;
+  return useSWR(
+    key,
+    () => {
+      const t = (title ?? "").trim();
+      const q = t.length >= 2 ? t : "videos infantiles";
+      return fetchRelatedVideos(videoId!, q, channelId!);
+    },
+    { revalidateOnFocus: false },
+  );
+}
+
+export function useVideoComments(
+  videoId: string | null,
+  enabled: boolean,
+) {
+  const key =
+    videoId && enabled ? (["yt-comments", videoId] as const) : null;
+  return useSWR(key, () => fetchVideoComments(videoId!), {
+    revalidateOnFocus: false,
+  });
 }
 
 export type { PageDTO, VideoDTO };

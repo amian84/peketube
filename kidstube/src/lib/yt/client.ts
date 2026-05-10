@@ -1,7 +1,12 @@
 import { getKidstubeDb } from "@/lib/db/schema";
 import type { KidstubeSettings } from "@/lib/db/settings";
 import { getSettingsFromDexie } from "@/lib/db/settings";
-import type { PageDTO, VideoDTO } from "@/lib/yt/types";
+import type {
+  NotificationItemDTO,
+  PageDTO,
+  VideoCommentDTO,
+  VideoDTO,
+} from "@/lib/yt/types";
 
 export type FetchMeta = { stale?: boolean; quotaExceeded?: boolean };
 
@@ -124,4 +129,40 @@ export async function fetchVideoById(
   const url = `/api/yt/video/${encodeURIComponent(id)}?${sp.toString()}`;
   const cacheKey = `video:${id}:${s.strictKidsOnly}`;
   return fetchJsonWithCache(cacheKey, s.videoTtlMs, url);
+}
+
+export async function fetchRelatedVideos(
+  videoId: string,
+  title: string,
+  channelId: string,
+): Promise<{ data: PageDTO<VideoDTO> } & FetchMeta> {
+  const s = await getSettingsFromDexie();
+  const sp = new URLSearchParams();
+  sp.set("videoId", videoId);
+  sp.set("title", title);
+  sp.set("channelId", channelId);
+  appendSettingsQuery(sp, s);
+  const url = `/api/yt/related?${sp.toString()}`;
+  const cacheKey = `related:${videoId}:${title.slice(0, 40)}:${channelId}:${s.strictKidsOnly}`;
+  return fetchJsonWithCache(cacheKey, s.videoTtlMs, url);
+}
+
+export async function fetchVideoComments(
+  videoId: string,
+): Promise<{ data: { items: VideoCommentDTO[] } } & FetchMeta> {
+  const s = await getSettingsFromDexie();
+  const url = `/api/yt/video/${encodeURIComponent(videoId)}/comments`;
+  const cacheKey = `comments:${videoId}`;
+  return fetchJsonWithCache(cacheKey, s.feedTtlMs, url);
+}
+
+export async function fetchNotifications(
+  maxResults = 20,
+): Promise<{ data: { items: NotificationItemDTO[] } } & FetchMeta> {
+  const s = await getSettingsFromDexie();
+  const sp = new URLSearchParams();
+  sp.set("maxResults", String(maxResults));
+  if (s.showVideoComments) sp.set("comments", "1");
+  const url = `/api/yt/notifications?${sp.toString()}`;
+  return fetchJsonWithCache(`notifications:${maxResults}:${s.showVideoComments}`, 60_000, url);
 }

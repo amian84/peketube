@@ -20,6 +20,10 @@ export interface KidstubeSettings {
   /** OQ-01-006 C — default ES + es */
   regionCode: string;
   relevanceLanguage: string;
+  /** OQ-04-001 — autoplay del siguiente en /watch (panel parental prompt 07). */
+  autoPlayNext: boolean;
+  /** OQ-04-003 — mostrar comentarios en /watch (panel parental prompt 07). */
+  showVideoComments: boolean;
 }
 
 export const DEFAULT_KIDSTUBE_SETTINGS: KidstubeSettings = {
@@ -29,6 +33,8 @@ export const DEFAULT_KIDSTUBE_SETTINGS: KidstubeSettings = {
   videoTtlMs: DEFAULT_VIDEO_TTL_MS,
   regionCode: DEFAULT_REGION_CODE,
   relevanceLanguage: DEFAULT_RELEVANCE_LANGUAGE,
+  autoPlayNext: true,
+  showVideoComments: false,
 };
 
 function mergeSettings(raw: unknown): KidstubeSettings {
@@ -60,6 +66,12 @@ function mergeSettings(raw: unknown): KidstubeSettings {
     /^[a-z]{2}(-[A-Z]{2})?$/.test(o.relevanceLanguage)
   ) {
     base.relevanceLanguage = o.relevanceLanguage;
+  }
+  if (typeof o.autoPlayNext === "boolean") {
+    base.autoPlayNext = o.autoPlayNext;
+  }
+  if (typeof o.showVideoComments === "boolean") {
+    base.showVideoComments = o.showVideoComments;
   }
   return base;
 }

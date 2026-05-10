@@ -20,7 +20,7 @@ export async function GET(
     }
 
     const { ok, status, json } = await youtubeGetBearer(accessToken, "channels", {
-      part: "snippet,statistics",
+      part: "snippet,statistics,contentDetails",
       id,
     });
 

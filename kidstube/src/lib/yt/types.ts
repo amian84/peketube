@@ -18,6 +18,8 @@ export interface ChannelDTO {
   thumbnailUrl: string;
   subscriberCount?: string;
   videoCount?: string;
+  /** Lista de subidas del canal (`playlistItems` sobre este id). */
+  uploadsPlaylistId?: string;
 }
 
 export interface PlaylistItemDTO {
@@ -44,3 +46,22 @@ export interface ApiErrorBody {
   message?: string;
   status?: number;
 }
+
+export type VideoCommentDTO = {
+  id: string;
+  authorDisplayName: string;
+  text: string;
+  publishedAt: string;
+};
+
+/** Actividad tipo “centro de notificaciones” (activities.list mine=true). */
+export type NotificationItemDTO = {
+  id: string;
+  activityType: string;
+  title: string;
+  subtitle: string;
+  publishedAt: string;
+  thumbnailUrl: string;
+  videoId?: string;
+  channelId?: string;
+};

@@ -86,8 +86,12 @@ export function mapChannelResource(c: {
     thumbnails?: Record<string, { url?: string }>;
   };
   statistics?: { subscriberCount?: string; videoCount?: string };
+  contentDetails?: {
+    relatedPlaylists?: { uploads?: string };
+  };
 }): ChannelDTO {
   const sn = c.snippet;
+  const uploads = c.contentDetails?.relatedPlaylists?.uploads;
   return {
     id: c.id,
     title: sn?.title ?? "",
@@ -95,6 +99,7 @@ export function mapChannelResource(c: {
     thumbnailUrl: bestThumbnail(sn?.thumbnails),
     subscriberCount: c.statistics?.subscriberCount,
     videoCount: c.statistics?.videoCount,
+    uploadsPlaylistId: uploads?.trim() || undefined,
   };
 }
 

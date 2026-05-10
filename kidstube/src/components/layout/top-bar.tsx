@@ -1,9 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useState } from "react";
-import { Bell, Search } from "lucide-react";
+import { useCallback, useRef, useState } from "react";
+import { Search } from "lucide-react";
 import { useLongPress } from "@/hooks/use-long-press";
+import { NotificationsPopover } from "@/components/layout/notifications-popover";
 import { UserAvatar } from "@/components/layout/user-avatar";
 import { YoutubeLogo } from "@/components/layout/youtube-logo";
 import { Button } from "@/components/ui/button";
@@ -11,8 +13,10 @@ import { Button } from "@/components/ui/button";
 export function TopBar() {
   const router = useRouter();
   const [q, setQ] = useState("");
+  const skipHomeNavRef = useRef(false);
 
   const goParental = useCallback(() => {
+    skipHomeNavRef.current = true;
     router.push("/parental/login");
   }, [router]);
 
@@ -35,14 +39,20 @@ export function TopBar() {
   return (
     <header className="sticky top-0 z-40 border-b border-[#272727] bg-[#0f0f0f]/95 backdrop-blur supports-[backdrop-filter]:bg-[#0f0f0f]/80">
       <div className="flex h-12 items-center gap-2 px-2 sm:h-14 sm:px-3">
-        <button
-          type="button"
+        <Link
+          href="/"
           className="shrink-0 touch-manipulation rounded-md p-1 outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
-          aria-label="Inicio (mantén pulsado para padres)"
+          aria-label="Inicio (mantén pulsado 5 s para panel parental)"
+          onClick={(e) => {
+            if (skipHomeNavRef.current) {
+              e.preventDefault();
+              skipHomeNavRef.current = false;
+            }
+          }}
           {...longPress}
         >
           <YoutubeLogo className="h-5 w-auto sm:h-6" />
-        </button>
+        </Link>
 
         <form
           onSubmit={onSearchSubmit}
@@ -66,17 +76,15 @@ export function TopBar() {
           </Button>
         </form>
 
-        <button
-          type="button"
-          className="hidden shrink-0 rounded-full p-2 text-[#aaa] sm:block"
-          aria-label="Notificaciones (decorativo)"
-        >
-          <Bell className="h-5 w-5" />
-        </button>
+        <NotificationsPopover />
 
-        <div className="shrink-0 pl-1">
+        <Link
+          href="/you"
+          className="shrink-0 rounded-full pl-1 outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label="Tu cuenta"
+        >
           <UserAvatar compact />
-        </div>
+        </Link>
       </div>
     </header>
   );

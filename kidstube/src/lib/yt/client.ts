@@ -162,7 +162,10 @@ export async function fetchNotifications(
   const s = await getSettingsFromDexie();
   const sp = new URLSearchParams();
   sp.set("maxResults", String(maxResults));
-  if (s.showVideoComments) sp.set("comments", "1");
   const url = `/api/yt/notifications?${sp.toString()}`;
-  return fetchJsonWithCache(`notifications:${maxResults}:${s.showVideoComments}`, 60_000, url);
+  return fetchJsonWithCache(
+    `notifications:${maxResults}:${s.showVideoComments}`,
+    60_000,
+    url,
+  );
 }

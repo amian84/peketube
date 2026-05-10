@@ -9,6 +9,9 @@ import { getKidstubeDb } from "./schema";
 
 const SETTINGS_ROW_KEY = "app";
 
+/** OQ-05-001 — cuándo crear la fila de historial (panel parental 07). */
+export type HistoryRecordMode = "on_play" | "after_10s" | "on_end";
+
 export interface KidstubeSettings {
   /** OQ-01-001 C */
   allowedCategoryIds: number[];
@@ -24,6 +27,10 @@ export interface KidstubeSettings {
   autoPlayNext: boolean;
   /** OQ-04-003 — mostrar comentarios en /watch (panel parental prompt 07). */
   showVideoComments: boolean;
+  /** OQ-05-001 — default primer PLAYING. */
+  historyRecordMode: HistoryRecordMode;
+  /** OQ-05-002 — días de retención (1–365), default 30. */
+  historyRetentionDays: number;
 }
 
 export const DEFAULT_KIDSTUBE_SETTINGS: KidstubeSettings = {
@@ -35,6 +42,8 @@ export const DEFAULT_KIDSTUBE_SETTINGS: KidstubeSettings = {
   relevanceLanguage: DEFAULT_RELEVANCE_LANGUAGE,
   autoPlayNext: true,
   showVideoComments: false,
+  historyRecordMode: "on_play",
+  historyRetentionDays: 30,
 };
 
 function mergeSettings(raw: unknown): KidstubeSettings {
@@ -72,6 +81,17 @@ function mergeSettings(raw: unknown): KidstubeSettings {
   }
   if (typeof o.showVideoComments === "boolean") {
     base.showVideoComments = o.showVideoComments;
+  }
+  if (
+    o.historyRecordMode === "on_play" ||
+    o.historyRecordMode === "after_10s" ||
+    o.historyRecordMode === "on_end"
+  ) {
+    base.historyRecordMode = o.historyRecordMode;
+  }
+  if (typeof o.historyRetentionDays === "number") {
+    const d = Math.floor(o.historyRetentionDays);
+    if (d >= 1 && d <= 365) base.historyRetentionDays = d;
   }
   return base;
 }

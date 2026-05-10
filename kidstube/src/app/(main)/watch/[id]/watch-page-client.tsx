@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronUp, Share2, ThumbsUp } from "lucide-react";
@@ -10,11 +10,15 @@ import { WatchNotAvailable } from "@/components/player/watch-not-available";
 import { YouTubePlayer } from "@/components/player/youtube-player";
 import { Button } from "@/components/ui/button";
 import { useKidstubeSettings } from "@/hooks/use-kidstube-settings";
+import { recordWatch, updateProgress } from "@/lib/db/history";
 import {
   formatPublishedRelative,
   formatViewCount,
 } from "@/lib/yt/format-display";
 import { useRelated, useVideo, useVideoComments } from "@/lib/yt/swr";
+
+/** YT.PlayerState.PLAYING (IFrame API) */
+const PS_PLAYING = 1;
 
 type WatchPageClientProps = {
   videoId: string;
@@ -41,20 +45,65 @@ export function WatchPageClient({ videoId }: WatchPageClientProps) {
   const [descOpen, setDescOpen] = useState(false);
   const [blockOpen, setBlockOpen] = useState(false);
 
+  const hasRecordedRef = useRef(false);
+  const lastSecRef = useRef(0);
+  useEffect(() => {
+    hasRecordedRef.current = false;
+    lastSecRef.current = 0;
+  }, [videoId]);
+
   const blocked =
     !!video &&
     settings.strictKidsOnly &&
     video.madeForKids !== true;
 
+  const handleStateChange = useCallback(
+    (state: number) => {
+      if (!video) return;
+      if (settings.historyRecordMode !== "on_play") return;
+      if (state !== PS_PLAYING || hasRecordedRef.current) return;
+      hasRecordedRef.current = true;
+      void recordWatch(video, Math.floor(lastSecRef.current));
+    },
+    [video, settings.historyRecordMode],
+  );
+
+  const handleProgress = useCallback(
+    (sec: number) => {
+      lastSecRef.current = sec;
+      if (!video) return;
+      const mode = settings.historyRecordMode;
+      if (mode === "after_10s" && sec >= 10 && !hasRecordedRef.current) {
+        hasRecordedRef.current = true;
+        void recordWatch(video, Math.floor(sec));
+        return;
+      }
+      if (mode === "on_end") return;
+      if (!hasRecordedRef.current) return;
+      void updateProgress(video.id, sec);
+    },
+    [video, settings.historyRecordMode],
+  );
+
   const handleEnded = useCallback(() => {
+    if (
+      video &&
+      settings.historyRecordMode === "on_end" &&
+      !hasRecordedRef.current
+    ) {
+      hasRecordedRef.current = true;
+      void recordWatch(video, Math.floor(lastSecRef.current));
+    }
     if (!settings.autoPlayNext) return;
     const next = relatedIdsRef.current.find((id) => id !== videoId);
     if (next) router.push(`/watch/${encodeURIComponent(next)}`);
-  }, [settings.autoPlayNext, router, videoId]);
-
-  const handleProgress = useCallback((sec: number) => {
-    void sec; /* prompt 05 — historial */
-  }, []);
+  }, [
+    video,
+    settings.autoPlayNext,
+    settings.historyRecordMode,
+    router,
+    videoId,
+  ]);
 
   const commentItems = comments.data?.data?.items ?? [];
 
@@ -93,6 +142,7 @@ export function WatchPageClient({ videoId }: WatchPageClientProps) {
       <YouTubePlayer
         videoId={video.id}
         onEnded={handleEnded}
+        onStateChange={handleStateChange}
         onProgress={handleProgress}
       />
 

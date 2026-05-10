@@ -15,52 +15,37 @@ Registrar localmente los vídeos vistos y mostrar la pantalla "Historial" dentro
 | OQ-05-003 | Permitir borrar historial desde panel parental | A) Sí, con confirmación + PIN B) También desde `/you` | A más control parental |
 | OQ-05-004 | Mostrar progreso restante en `<VideoCard>` del historial | A) Sí (barra inferior como YouTube) B) No | A más fiel |
 
-**Status:** `unresolved`
-**Assumptions if deferred:** —
+**Status:** `resolved` (formulario interactivo + matiz usuario)
 
-> **Do not start implementation until open questions in this file are resolved or explicitly deferred with recorded assumptions.**
+**Resolución registrada:**
+
+- **OQ-05-001 — A + configurable en panel parental:** por defecto registrar al **primer `PLAYING`** (inicio de reproducción). Ajuste persistido en Dexie: `historyRecordMode`: `on_play` | `after_10s` | `on_end` (panel parental prompt 07).
+- **OQ-05-002 — Días configurables, default 30:** retención por **antigüedad** (`historyRetentionDays`, default **30**, rango razonable p. ej. 1–365). Panel parental (07) editará el valor; al registrar/listar se **poda** lo más antiguo.
+- **OQ-05-003 — A:** borrar historial **solo** desde panel parental (confirmación + PIN en prompt 07). **No** botón de borrado en `/you`.
+- **OQ-05-004 — A:** barra de progreso en tarjetas del historial cuando hay `progressSec` / `durationSec`.
 
 ## Schema Dexie
 
-`src/lib/db/db.ts`:
-
-```ts
-class KidsDB extends Dexie {
-  watchHistory!: Table<WatchHistoryRow, string>; // pk videoId
-  blockedChannels!: Table<{ channelId: string; addedAt: number }, string>;
-  blockedVideos!: Table<{ videoId: string; addedAt: number }, string>;
-  apiCache!: Table<{ key: string; payload: unknown; expiresAt: number }, string>;
-  settings!: Table<{ key: string; value: unknown }, string>;
-  constructor() {
-    super("kidstube");
-    this.version(1).stores({
-      watchHistory: "videoId, watchedAt, channelId",
-      blockedChannels: "channelId, addedAt",
-      blockedVideos: "videoId, addedAt",
-      apiCache: "key, expiresAt",
-      settings: "key",
-    });
-  }
-}
-```
+`watchHistory` en versión 2 de IndexedDB (`kidstube/src/lib/db/schema.ts`). Tablas de blacklist en prompt 06.
 
 `WatchHistoryRow`: `{ videoId, title, channelId, channelTitle, thumbnailUrl, durationSec, watchedAt, progressSec }`.
 
 ## API
 
 `src/lib/db/history.ts`:
+
 - `recordWatch(video, progressSec)` — upsert y pone `watchedAt = Date.now()`.
 - `updateProgress(videoId, sec)`.
-- `listHistory({ offset, limit })` — orden `watchedAt desc`.
+- `listHistory({ offset, limit })` — orden `watchedAt desc`; aplica poda por retención.
 - `clearHistory()`.
 
 ## Integración
 
-- `<YouTubePlayer onProgress={...}>`: a los 10s llamar `recordWatch()`, luego cada 10s `updateProgress()`.
-- `/you` añade sección "Historial" usando `<VideoCard>` con barra de progreso si `progressSec / durationSec > 0`.
+- `/watch`: según `historyRecordMode`, disparar `recordWatch` / `updateProgress` (player + progreso cada 10s).
+- `/you`: sección **Historial** con `VideoCard` y barra de progreso.
 
 ## Criterios de aceptación
 
-- Tras ver un vídeo aparece en `/you` → Historial.
+- Tras ver un vídeo aparece en `/you` → Historial (según modo y umbral).
 - Persiste tras reload y tras cerrar la PWA.
-- `clearHistory()` desde panel parental funciona.
+- `clearHistory()` disponible para el panel parental (prompt 07); no desde `/you`.

@@ -11,13 +11,25 @@ import {
 
 type VideoCardProps = {
   video: VideoDTO;
+  /** Barra de progreso estilo YouTube (historial local, OQ-05-004). */
+  historyProgress?: { progressSec: number; durationSec: number };
 };
 
-export function VideoCard({ video }: VideoCardProps) {
+export function VideoCard({ video, historyProgress }: VideoCardProps) {
   const href = `/watch/${encodeURIComponent(video.id)}`;
   const duration = formatDuration(video.durationSec);
   const views = formatViewCount(video.viewCount);
   const when = formatPublishedRelative(video.publishedAt);
+  const showHistoryBar =
+    historyProgress &&
+    historyProgress.durationSec > 0 &&
+    historyProgress.progressSec >= 0;
+  const historyPct = showHistoryBar
+    ? Math.min(
+        100,
+        (historyProgress.progressSec / historyProgress.durationSec) * 100,
+      )
+    : 0;
 
   return (
     <Link href={href} className="block w-full min-w-0">
@@ -31,8 +43,23 @@ export function VideoCard({ video }: VideoCardProps) {
             sizes="(max-width: 768px) 100vw, 50vw"
           />
         ) : null}
+        {showHistoryBar ? (
+          <div
+            className="absolute bottom-0 left-0 right-0 h-1 bg-black/40"
+            aria-hidden
+          >
+            <div
+              className="h-full bg-[#ff0000]"
+              style={{ width: `${historyPct}%` }}
+            />
+          </div>
+        ) : null}
         {duration ? (
-          <span className="absolute bottom-1 right-1 rounded bg-black/80 px-1 py-0.5 text-xs font-medium text-white">
+          <span
+            className={`absolute right-1 rounded bg-black/80 px-1 py-0.5 text-xs font-medium text-white ${
+              showHistoryBar ? "bottom-2" : "bottom-1"
+            }`}
+          >
             {duration}
           </span>
         ) : null}

@@ -1,8 +1,84 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useSession } from "next-auth/react";
+import { useCallback, useEffect, useState } from "react";
+import { VideoCard } from "@/components/video/video-card";
+import { listHistory } from "@/lib/db/history";
+import type { WatchHistoryRow } from "@/lib/db/schema";
+import type { VideoDTO } from "@/lib/yt/types";
+
+function watchRowToVideo(row: WatchHistoryRow): VideoDTO {
+  return {
+    id: row.videoId,
+    title: row.title,
+    description: "",
+    channelId: row.channelId,
+    channelTitle: row.channelTitle,
+    thumbnailUrl: row.thumbnailUrl,
+    publishedAt: new Date(row.watchedAt).toISOString(),
+    durationSec: row.durationSec,
+  };
+}
+
+function YouHistorySection() {
+  const [rows, setRows] = useState<WatchHistoryRow[]>([]);
+
+  const reload = useCallback(() => {
+    void listHistory({ limit: 100 }).then(setRows);
+  }, []);
+
+  useEffect(() => {
+    reload();
+    const onVis = () => {
+      if (document.visibilityState === "visible") reload();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [reload]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.location.hash !== "#historial") return;
+    requestAnimationFrame(() => {
+      document.getElementById("historial")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+  }, []);
+
+  return (
+    <section id="historial" className="w-full max-w-lg pb-4">
+      <h2 className="mb-3 text-base font-semibold">Historial</h2>
+      {rows.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          Sin vídeos en el historial todavía.
+        </p>
+      ) : (
+        <div className="flex flex-col">
+          {rows.map((row) => (
+            <VideoCard
+              key={row.videoId}
+              video={watchRowToVideo(row)}
+              historyProgress={
+                row.durationSec != null && row.durationSec > 0
+                  ? {
+                      progressSec: row.progressSec,
+                      durationSec: row.durationSec,
+                    }
+                  : undefined
+              }
+            />
+          ))}
+        </div>
+      )}
+      <p className="mt-3 text-xs text-muted-foreground">
+        Borrar historial: panel parental (PIN y confirmación, prompt 07).
+      </p>
+    </section>
+  );
+}
 
 export function YouPageClient() {
   const { data: session, status } = useSession();
@@ -31,18 +107,13 @@ export function YouPageClient() {
       <p className="text-center text-lg font-medium">{label}</p>
 
       <div className="w-full max-w-sm space-y-2">
-        <Link
-          href="/you#historial"
-          className="flex w-full items-center justify-between rounded-lg border border-border bg-card px-4 py-3 text-sm font-medium text-foreground hover:bg-muted/50"
-        >
-          Historial
-          <span className="text-xs text-muted-foreground">Próx. prompt 05</span>
-        </Link>
         <div className="flex w-full items-center justify-between rounded-lg border border-dashed border-border px-4 py-3 text-sm text-muted-foreground">
           Tus vídeos
           <span className="text-xs">Próximamente</span>
         </div>
       </div>
+
+      <YouHistorySection />
 
       <p className="max-w-sm text-center text-xs text-muted-foreground">
         Cerrar sesión: solo desde el panel parental (OQ-02-004, prompt 07).

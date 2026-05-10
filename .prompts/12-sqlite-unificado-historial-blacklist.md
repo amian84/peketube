@@ -4,7 +4,7 @@
 
 ## Objetivo
 
-Centralizar en **el mismo fichero SQLite** que ya usa la blacklist (prompt **06**) también el **historial de visionado** que hoy vive solo en **IndexedDB/Dexie** (prompt **05**). Un solo almacén servidor por usuario (`user_id` = `sub` del JWT), misma variable `BLACKLIST_DB_PATH` (o renombrar a algo neutro tipo `KIDSTUBE_SERVER_DB_PATH` si se prefiere).
+Centralizar en **el mismo fichero SQLite** que ya usa la blacklist (prompt **06**) también el **historial de visionado** que hoy vive solo en **IndexedDB/Dexie** (prompt **05**). El mismo fichero ya incluye **PIN parental** (`user_parental_pin`). Un solo almacén servidor por usuario (`user_id` = `sub` del JWT), variable `KIDSTUBE_SERVER_DB_PATH` o `BLACKLIST_DB_PATH` (prioridad documentada en `.env.example`).
 
 ## Contexto / dependencias
 
@@ -30,6 +30,7 @@ Centralizar en **el mismo fichero SQLite** que ya usa la blacklist (prompt **06*
 
 ## Esquema SQLite (orientativo)
 
+- **Ya implementado (PIN parental):** tabla `user_parental_pin` en el mismo fichero que `user_blacklist` (`pin_salt_b64`, `pin_hash_b64`, `pin_iter`, `recovery_*`, `updated_at`). APIs `/api/parental-pin` (GET/PUT/DELETE), `/api/parental-pin/verify`, `/api/parental-pin/verify-recovery`.
 - Reutilizar DB existente; añadir tabla(s), p. ej. `watch_history`:
   - `user_id TEXT NOT NULL`
   - `video_id TEXT NOT NULL`

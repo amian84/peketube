@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useCallback, useEffect, useState } from "react";
 import { VideoCard } from "@/components/video/video-card";
@@ -123,6 +124,13 @@ export function YouPageClient() {
       <YouHistorySection />
 
       <p className="max-w-sm text-center text-xs text-muted-foreground">
+        <Link
+          href="/parental/login"
+          className="font-medium text-primary underline-offset-2 hover:underline"
+        >
+          Panel parental
+        </Link>
+        {" · "}
         Cerrar sesión: solo desde el panel parental (OQ-02-004, prompt 07).
       </p>
     </div>

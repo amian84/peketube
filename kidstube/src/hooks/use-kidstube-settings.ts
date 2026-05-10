@@ -13,11 +13,17 @@ export function useKidstubeSettings(): KidstubeSettings {
 
   useEffect(() => {
     let alive = true;
-    getSettingsFromDexie().then((v) => {
-      if (alive) setS(v);
-    });
+    const load = () => {
+      getSettingsFromDexie().then((v) => {
+        if (alive) setS(v);
+      });
+    };
+    load();
+    const onChange = () => load();
+    window.addEventListener("kidstube-settings-changed", onChange);
     return () => {
       alive = false;
+      window.removeEventListener("kidstube-settings-changed", onChange);
     };
   }, []);
 

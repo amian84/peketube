@@ -5,34 +5,34 @@ import { useSession } from "next-auth/react";
 import { useBlacklist } from "@/components/providers/blacklist-provider";
 import { Button } from "@/components/ui/button";
 import {
-  exportBlacklistDownload,
-  postBlacklistImportMerge,
-} from "@/lib/db/blacklist";
+  applyKidstubeConfigImport,
+  downloadKidstubeConfigExport,
+} from "@/lib/parental/config-export";
+import { postBlacklistImportMerge } from "@/lib/db/blacklist";
 
-/** Backup lista negra (prompt 06); el PIN completo llegará en prompt 07. */
-export function ParentalBlacklistTools() {
+/** Export / import JSON: ajustes + lista negra (sin PIN). Prompt 07. */
+export function ParentalConfigBackup() {
   const { status } = useSession();
   const { refreshFromLocal } = useBlacklist();
   const [msg, setMsg] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
   return (
-    <div className="mt-8 w-full max-w-sm space-y-3 rounded-lg border border-border bg-card p-4 text-left">
-      <p className="text-sm font-medium">Lista negra — backup JSON</p>
+    <div className="space-y-3 rounded-lg border border-border bg-card p-4">
+      <p className="text-sm font-medium">Copia de seguridad (config)</p>
       <p className="text-xs text-muted-foreground">
-        Exporta el estado local. La importación <strong>fusiona</strong> con el
-        servidor si hay sesión (requiere iniciar sesión).
+        Incluye ajustes de la app y listas negras locales. No incluye el PIN.
       </p>
       <Button
         type="button"
         variant="secondary"
         className="w-full"
         onClick={() => {
-          void exportBlacklistDownload();
-          setMsg("Descarga iniciada.");
+          void downloadKidstubeConfigExport();
+          setMsg("Descarga de configuración iniciada.");
         }}
       >
-        Exportar JSON
+        Exportar JSON completo
       </Button>
       <input
         ref={inputRef}
@@ -51,15 +51,28 @@ export function ParentalBlacklistTools() {
             setMsg("No es un JSON válido.");
             return;
           }
-          if (status !== "authenticated") {
-            setMsg("Inicia sesión para fusionar en el servidor y sincronizar.");
-            return;
-          }
           try {
+            if (
+              parsed &&
+              typeof parsed === "object" &&
+              "version" in (parsed as object) &&
+              typeof (parsed as { version?: unknown }).version === "number"
+            ) {
+              const r = await applyKidstubeConfigImport(parsed);
+              setMsg(r.message);
+              await refreshFromLocal();
+              return;
+            }
+            if (status !== "authenticated") {
+              setMsg(
+                "JSON antiguo solo-blacklist: inicia sesión para fusionar en servidor.",
+              );
+              return;
+            }
             const ok = await postBlacklistImportMerge(parsed);
             if (ok) {
               await refreshFromLocal();
-              setMsg("Importación fusionada correctamente.");
+              setMsg("Lista negra fusionada (formato antiguo).");
             } else {
               setMsg("No autorizado (sesión).");
             }
@@ -74,7 +87,7 @@ export function ParentalBlacklistTools() {
         className="w-full"
         onClick={() => inputRef.current?.click()}
       >
-        Importar JSON (fusionar)
+        Importar JSON
       </Button>
       {msg ? (
         <p className="text-xs text-muted-foreground" role="status">

@@ -65,3 +65,14 @@ export function getKidstubeDb(): KidstubeDB | null {
   if (!db) db = new KidstubeDB();
   return db;
 }
+
+/** Borra toda la base IndexedDB `kidstube` (reset de la app, prompt 07). */
+export async function deleteKidstubeDatabase(): Promise<void> {
+  if (typeof window === "undefined") return;
+  if (db) {
+    await db.delete();
+    db = null;
+    return;
+  }
+  await Dexie.delete("kidstube");
+}

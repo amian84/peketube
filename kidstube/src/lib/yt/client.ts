@@ -6,6 +6,7 @@ import type {
   PageDTO,
   VideoCommentDTO,
   VideoDTO,
+  ChannelDTO,
 } from "@/lib/yt/types";
 
 export type FetchMeta = { stale?: boolean; quotaExceeded?: boolean };
@@ -56,6 +57,16 @@ export async function fetchJsonWithCache<T>(
 function appendSettingsQuery(sp: URLSearchParams, s: KidstubeSettings) {
   sp.set("categoryIds", s.allowedCategoryIds.join(","));
   if (s.strictKidsOnly) sp.set("strictKids", "1");
+  sp.set("regionCode", s.regionCode);
+  sp.set("relevanceLanguage", s.relevanceLanguage);
+}
+
+/** Metadatos de vídeo en lista de bloqueados (no aplicar filtro madeForKids). */
+function appendSettingsQueryNoStrictKids(
+  sp: URLSearchParams,
+  s: KidstubeSettings,
+) {
+  sp.set("categoryIds", s.allowedCategoryIds.join(","));
   sp.set("regionCode", s.regionCode);
   sp.set("relevanceLanguage", s.relevanceLanguage);
 }
@@ -128,6 +139,27 @@ export async function fetchVideoById(
   appendSettingsQuery(sp, s);
   const url = `/api/yt/video/${encodeURIComponent(id)}?${sp.toString()}`;
   const cacheKey = `video:${id}:${s.strictKidsOnly}`;
+  return fetchJsonWithCache(cacheKey, s.videoTtlMs, url);
+}
+
+/** Metadatos para /parental/blocked (vídeos no infantiles visibles al padre). */
+export async function fetchVideoByIdBlockedPreview(
+  id: string,
+): Promise<{ data: VideoDTO } & FetchMeta> {
+  const s = await getSettingsFromDexie();
+  const sp = new URLSearchParams();
+  appendSettingsQueryNoStrictKids(sp, s);
+  const url = `/api/yt/video/${encodeURIComponent(id)}?${sp.toString()}`;
+  const cacheKey = `video:blockedPreview:${id}`;
+  return fetchJsonWithCache(cacheKey, s.videoTtlMs, url);
+}
+
+export async function fetchChannelById(
+  id: string,
+): Promise<{ data: ChannelDTO } & FetchMeta> {
+  const s = await getSettingsFromDexie();
+  const url = `/api/yt/channel/${encodeURIComponent(id)}`;
+  const cacheKey = `channel:${id}`;
   return fetchJsonWithCache(cacheKey, s.videoTtlMs, url);
 }
 

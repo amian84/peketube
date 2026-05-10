@@ -7,7 +7,9 @@ import {
   type BlacklistWire,
 } from "@/lib/yt/filter";
 
-async function replaceAllFromSnapshot(s: BlacklistSnapshot): Promise<void> {
+export async function replaceAllFromSnapshot(
+  s: BlacklistSnapshot,
+): Promise<void> {
   const dex = getKidstubeDb();
   if (!dex) return;
   await dex.transaction(

@@ -1,6 +1,9 @@
-import { ParentalLoginClient } from "./parental-login-client";
+import { ParentalLoginForm } from "@/components/parental/parental-login-form";
 
-/** Placeholder hasta prompt 07 (PIN + flujo real). Long-press en logo → aquí. */
-export default function ParentalLoginPlaceholderPage() {
-  return <ParentalLoginClient />;
+export default function ParentalLoginPage() {
+  return (
+    <main className="flex min-h-dvh flex-col items-center justify-center bg-background px-4 py-10">
+      <ParentalLoginForm />
+    </main>
+  );
 }

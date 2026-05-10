@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Roboto } from "next/font/google";
 import { AuthProvider } from "@/components/providers/auth-provider";
+import { BlacklistProvider } from "@/components/providers/blacklist-provider";
 import "./globals.css";
 
 const roboto = Roboto({
@@ -36,7 +37,9 @@ export default function RootLayout({
   return (
     <html lang="es" className={`dark ${roboto.variable}`}>
       <body className="min-h-dvh bg-background font-sans text-foreground antialiased">
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <BlacklistProvider>{children}</BlacklistProvider>
+        </AuthProvider>
       </body>
     </html>
   );

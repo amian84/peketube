@@ -4,9 +4,11 @@ import Image from "next/image";
 import { useSession } from "next-auth/react";
 import { useCallback, useEffect, useState } from "react";
 import { VideoCard } from "@/components/video/video-card";
+import { useBlacklist } from "@/components/providers/blacklist-provider";
 import { listHistory } from "@/lib/db/history";
 import type { WatchHistoryRow } from "@/lib/db/schema";
 import type { VideoDTO } from "@/lib/yt/types";
+import { isVideoBlacklisted } from "@/lib/yt/filter";
 
 function watchRowToVideo(row: WatchHistoryRow): VideoDTO {
   return {
@@ -22,11 +24,16 @@ function watchRowToVideo(row: WatchHistoryRow): VideoDTO {
 }
 
 function YouHistorySection() {
+  const { snapshot } = useBlacklist();
   const [rows, setRows] = useState<WatchHistoryRow[]>([]);
 
   const reload = useCallback(() => {
-    void listHistory({ limit: 100 }).then(setRows);
-  }, []);
+    void listHistory({ limit: 100 }).then((r) => {
+      setRows(
+        r.filter((row) => !isVideoBlacklisted(watchRowToVideo(row), snapshot)),
+      );
+    });
+  }, [snapshot]);
 
   useEffect(() => {
     reload();

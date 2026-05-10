@@ -2,12 +2,14 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Bell } from "lucide-react";
 import useSWR from "swr";
+import { useBlacklist } from "@/components/providers/blacklist-provider";
 import { Button } from "@/components/ui/button";
 import { useKidstubeSettings } from "@/hooks/use-kidstube-settings";
 import { fetchNotifications } from "@/lib/yt/client";
+import { applyBlacklistToNotifications } from "@/lib/yt/filter";
 import type { NotificationItemDTO } from "@/lib/yt/types";
 
 function formatNotifTime(iso: string): string {
@@ -26,6 +28,7 @@ function formatNotifTime(iso: string): string {
 export function NotificationsPopover() {
   const router = useRouter();
   const settings = useKidstubeSettings();
+  const { snapshot } = useBlacklist();
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
@@ -35,7 +38,10 @@ export function NotificationsPopover() {
     { revalidateOnFocus: false },
   );
 
-  const items: NotificationItemDTO[] = data?.data?.items ?? [];
+  const items = useMemo(() => {
+    const raw = data?.data?.items ?? [];
+    return applyBlacklistToNotifications(raw, snapshot);
+  }, [data, snapshot]);
 
   useEffect(() => {
     if (!open) return;

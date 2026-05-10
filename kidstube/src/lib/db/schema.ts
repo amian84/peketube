@@ -23,10 +23,18 @@ export type WatchHistoryRow = {
   progressSec: number;
 };
 
+/** Prompt 06 — blacklist local (sync con servidor cuando hay sesión). */
+export type BlockedChannelRow = { channelId: string };
+export type BlockedVideoRow = { videoId: string };
+export type BlockedTitleKeywordRow = { keyword: string };
+
 export class KidstubeDB extends Dexie {
   apiCache!: Table<ApiCacheRow, string>;
   settings!: Table<SettingsRow, string>;
   watchHistory!: Table<WatchHistoryRow, string>;
+  blockedChannels!: Table<BlockedChannelRow, string>;
+  blockedVideos!: Table<BlockedVideoRow, string>;
+  blockedTitleKeywords!: Table<BlockedTitleKeywordRow, string>;
 
   constructor() {
     super("kidstube");
@@ -38,6 +46,14 @@ export class KidstubeDB extends Dexie {
       apiCache: "key, expiresAt",
       settings: "key",
       watchHistory: "videoId, watchedAt, channelId",
+    });
+    this.version(3).stores({
+      apiCache: "key, expiresAt",
+      settings: "key",
+      watchHistory: "videoId, watchedAt, channelId",
+      blockedChannels: "channelId",
+      blockedVideos: "videoId",
+      blockedTitleKeywords: "keyword",
     });
   }
 }

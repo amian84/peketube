@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronUp, Share2, ThumbsUp } from "lucide-react";
@@ -9,8 +9,10 @@ import { VideoCommentsPanel } from "@/components/player/video-comments-panel";
 import { WatchNotAvailable } from "@/components/player/watch-not-available";
 import { YouTubePlayer } from "@/components/player/youtube-player";
 import { Button } from "@/components/ui/button";
+import { useBlacklist } from "@/components/providers/blacklist-provider";
 import { useKidstubeSettings } from "@/hooks/use-kidstube-settings";
 import { recordWatch, updateProgress } from "@/lib/db/history";
+import { applyBlacklist, isVideoBlacklisted } from "@/lib/yt/filter";
 import {
   formatPublishedRelative,
   formatViewCount,
@@ -30,20 +32,31 @@ export function WatchPageClient({ videoId }: WatchPageClientProps) {
   const { data, error, isLoading } = useVideo(videoId);
   const video = data?.data;
 
+  const {
+    snapshot,
+    blockVideo,
+    blockChannel,
+    blockTitleKeyword,
+  } = useBlacklist();
+
   const related = useRelated(
     video?.id ?? null,
     video?.title ?? null,
     video?.channelId ?? null,
   );
-  const relatedVideos = related.data?.data?.items ?? [];
+  const relatedVideosFiltered = useMemo(() => {
+    const items = related.data?.data?.items ?? [];
+    return applyBlacklist(items, snapshot);
+  }, [related.data, snapshot]);
   const relatedIdsRef = useRef<string[]>([]);
-  relatedIdsRef.current = relatedVideos.map((v) => v.id);
+  relatedIdsRef.current = relatedVideosFiltered.map((v) => v.id);
 
   const commentsEnabled = settings.showVideoComments;
   const comments = useVideoComments(videoId, commentsEnabled);
 
   const [descOpen, setDescOpen] = useState(false);
   const [blockOpen, setBlockOpen] = useState(false);
+  const [keywordDraft, setKeywordDraft] = useState("");
 
   const hasRecordedRef = useRef(false);
   const lastSecRef = useRef(0);
@@ -134,6 +147,12 @@ export function WatchPageClient({ videoId }: WatchPageClientProps) {
     return <WatchNotAvailable />;
   }
 
+  if (video && isVideoBlacklisted(video, snapshot)) {
+    return (
+      <WatchNotAvailable reason="Este vídeo está bloqueado por la lista negra parental (vídeo, canal o palabra en el título)." />
+    );
+  }
+
   const views = formatViewCount(video.viewCount);
   const when = formatPublishedRelative(video.publishedAt);
 
@@ -198,7 +217,7 @@ export function WatchPageClient({ videoId }: WatchPageClientProps) {
         ) : null}
       </div>
 
-      <RelatedList videos={relatedVideos} />
+      <RelatedList videos={relatedVideosFiltered} />
 
       {commentsEnabled ? (
         <VideoCommentsPanel
@@ -219,17 +238,67 @@ export function WatchPageClient({ videoId }: WatchPageClientProps) {
             className="max-w-sm rounded-lg border border-border bg-background p-4 text-left shadow-lg"
             onClick={(e) => e.stopPropagation()}
           >
-            <p className="text-sm font-medium">Bloquear vídeo o canal</p>
+            <p className="text-sm font-medium">Lista negra parental</p>
             <p className="mt-2 text-sm text-muted-foreground">
-              La acción real (y el PIN) llegará en el prompt 08. Por ahora solo
-              es un aviso.
+              Elige qué bloquear. Los listados de la app filtrarán estos elementos
+              (y se sincronizan en el servidor si iniciaste sesión).
             </p>
+            <div className="mt-3 flex flex-col gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                className="w-full"
+                onClick={() => {
+                  void blockVideo(video.id);
+                  setBlockOpen(false);
+                  router.push("/");
+                }}
+              >
+                Bloquear este vídeo
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                className="w-full"
+                onClick={() => {
+                  void blockChannel(video.channelId);
+                  setBlockOpen(false);
+                  router.push("/");
+                }}
+              >
+                Bloquear canal ({video.channelTitle})
+              </Button>
+            </div>
+            <label className="mt-4 block text-xs font-medium text-muted-foreground">
+              Palabra en títulos (no distingue mayúsculas)
+              <input
+                type="text"
+                value={keywordDraft}
+                onChange={(e) => setKeywordDraft(e.target.value)}
+                className="mt-1 w-full rounded-md border border-border bg-background px-2 py-2 text-sm text-foreground"
+                placeholder="ej. nombre de marca"
+              />
+            </label>
+            <Button
+              type="button"
+              variant="outline"
+              className="mt-2 w-full"
+              onClick={() => {
+                const t = keywordDraft.trim();
+                if (!t) return;
+                void blockTitleKeyword(t);
+                setKeywordDraft("");
+                setBlockOpen(false);
+              }}
+            >
+              Bloquear palabra en títulos
+            </Button>
             <Button
               type="button"
               className="mt-4 w-full"
               onClick={() => setBlockOpen(false)}
             >
-              Entendido
+              Cerrar
             </Button>
           </div>
         </div>

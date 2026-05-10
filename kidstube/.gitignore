@@ -41,3 +41,6 @@ yarn-error.log*
 /public/workbox-*.js
 /public/workbox-*.js.map
 /public/fallback-*.js
+
+# SQLite blacklist (prompt 06)
+/data/

@@ -1,8 +1,15 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { useBlacklist } from "@/components/providers/blacklist-provider";
 import { VideoCard } from "@/components/video/video-card";
-import { useSearch } from "@/lib/yt/swr";
+import { fetchSearchPage } from "@/lib/yt/client";
+import {
+  DEFAULT_VIDEO_GRID_DESIRED,
+  aggregateFilteredVideos,
+} from "@/lib/yt/fill-filtered-page";
+import type { VideoDTO } from "@/lib/yt/types";
 
 export function ResultsClient() {
   const searchParams = useSearchParams();
@@ -10,9 +17,42 @@ export function ResultsClient() {
   const q = qRaw?.trim() ?? "";
   const hasQuery = q.length >= 2;
 
-  const { data, error, isLoading } = useSearch(hasQuery ? q : null);
+  const { snapshot, ready } = useBlacklist();
+  const [items, setItems] = useState<VideoDTO[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const items = data?.data?.items ?? [];
+  useEffect(() => {
+    if (!ready || !hasQuery) {
+      setItems([]);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const { items: agg } = await aggregateFilteredVideos(
+          (token) => fetchSearchPage(q, token),
+          snapshot,
+          DEFAULT_VIDEO_GRID_DESIRED,
+        );
+        if (!cancelled) setItems(agg);
+      } catch (e) {
+        if (!cancelled) {
+          setError(e instanceof Error ? e.message : "Error");
+          setItems([]);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [hasQuery, q, snapshot, ready]);
 
   return (
     <div className="px-1 pb-24 pt-2 sm:px-3">
@@ -25,7 +65,7 @@ export function ResultsClient() {
           enviar.
         </p>
       ) : null}
-      {hasQuery && isLoading ? (
+      {hasQuery && loading ? (
         <p className="px-2 text-sm text-muted-foreground">Buscando…</p>
       ) : null}
       {hasQuery && error ? (
@@ -36,9 +76,9 @@ export function ResultsClient() {
           <VideoCard key={v.id} video={v} />
         ))}
       </div>
-      {hasQuery && !isLoading && !error && items.length === 0 ? (
+      {hasQuery && !loading && !error && items.length === 0 ? (
         <p className="py-8 text-center text-sm text-muted-foreground">
-          Sin resultados.
+          Sin resultados (o todo filtrado por la lista negra).
         </p>
       ) : null}
     </div>

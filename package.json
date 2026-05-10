@@ -1,0 +1,15 @@
+{
+  "name": "kidstube-repo",
+  "private": true,
+  "packageManager": "pnpm@11.0.9",
+  "scripts": {
+    "prepare": "pnpm install -C kidstube",
+    "dev": "pnpm -C kidstube dev",
+    "dev:lan": "pnpm -C kidstube dev:lan",
+    "build": "pnpm -C kidstube build",
+    "start": "pnpm -C kidstube start",
+    "lint": "pnpm -C kidstube lint",
+    "typecheck": "pnpm -C kidstube typecheck",
+    "install:app": "pnpm install -C kidstube"
+  }
+}

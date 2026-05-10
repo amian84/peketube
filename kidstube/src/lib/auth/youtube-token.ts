@@ -1,0 +1,17 @@
+import { getToken } from "next-auth/jwt";
+import type { NextRequest } from "next/server";
+
+function authSecret(): string | undefined {
+  return process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
+}
+
+/** Token OAuth de YouTube solo en servidor (no va en `session` del cliente). */
+export async function getYouTubeAccessToken(
+  req: NextRequest,
+): Promise<string | null> {
+  const secret = authSecret();
+  if (!secret) return null;
+  const token = await getToken({ req, secret });
+  const at = token?.access_token;
+  return typeof at === "string" ? at : null;
+}

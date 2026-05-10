@@ -1,13 +1,20 @@
+import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { getYouTubeAccessToken } from "@/lib/auth/youtube-token";
 import { mapVideoResource } from "@/lib/yt/mappers";
-import { isQuotaExceeded, youtubeGet } from "@/lib/yt/server-youtube";
+import { isQuotaExceeded, youtubeGetBearer } from "@/lib/yt/server-youtube";
 import { parseStrictKids } from "@/lib/yt/validate-request";
 
 export async function GET(
-  req: Request,
+  req: NextRequest,
   ctx: { params: { id: string } },
 ) {
   try {
+    const accessToken = await getYouTubeAccessToken(req);
+    if (!accessToken) {
+      return NextResponse.json({ error: "AUTH_REQUIRED" }, { status: 401 });
+    }
+
     const { id } = ctx.params;
     if (!id) {
       return NextResponse.json({ error: "BAD_REQUEST" }, { status: 400 });
@@ -16,7 +23,7 @@ export async function GET(
     const { searchParams } = new URL(req.url);
     const strictKids = parseStrictKids(searchParams);
 
-    const { ok, status, json } = await youtubeGet("videos", {
+    const { ok, status, json } = await youtubeGetBearer(accessToken, "videos", {
       part: "snippet,contentDetails,statistics,status",
       id,
     });
@@ -49,13 +56,6 @@ export async function GET(
 
     return NextResponse.json(video);
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    if (msg.includes("YOUTUBE_API_KEY")) {
-      return NextResponse.json(
-        { error: "SERVER_CONFIG", message: msg },
-        { status: 500 },
-      );
-    }
     throw e;
   }
 }

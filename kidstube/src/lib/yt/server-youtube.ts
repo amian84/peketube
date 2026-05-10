@@ -1,13 +1,5 @@
 const BASE = "https://www.googleapis.com/youtube/v3";
 
-export function requireApiKey(): string {
-  const k = process.env.YOUTUBE_API_KEY;
-  if (!k?.trim()) {
-    throw new Error("YOUTUBE_API_KEY is not set");
-  }
-  return k.trim();
-}
-
 export type YoutubeJson = {
   error?: { code?: number; message?: string; errors?: { reason?: string }[] };
   items?: unknown[];
@@ -15,18 +7,21 @@ export type YoutubeJson = {
   prevPageToken?: string;
 };
 
-export async function youtubeGet(
+/** YouTube Data API v3 con OAuth del usuario (sin API key). */
+export async function youtubeGetBearer(
+  accessToken: string,
   endpoint: string,
   params: Record<string, string | undefined>,
 ): Promise<{ ok: boolean; status: number; json: YoutubeJson }> {
-  const key = requireApiKey();
   const usp = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) {
     if (v !== undefined && v !== "") usp.set(k, v);
   }
-  usp.set("key", key);
   const url = `${BASE}/${endpoint}?${usp.toString()}`;
-  const res = await fetch(url, { cache: "no-store" });
+  const res = await fetch(url, {
+    cache: "no-store",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
   const json = (await res.json()) as YoutubeJson;
   return { ok: res.ok, status: res.status, json };
 }

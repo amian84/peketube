@@ -16,10 +16,15 @@ Página `/watch/[id]` con reproductor embebido (IFrame Player API), título, can
 | OQ-04-004 | Pantalla completa | A) Botón nativo del player B) Forzar landscape al entrar fullscreen C) Solo portrait | A nativo |
 | OQ-04-005 | Si el vídeo destino tiene `madeForKids=false` y está activo el modo solo-kids | A) Bloquear con mensaje "No disponible" B) Permitir con warning | A consistente con la promesa |
 
-**Status:** `unresolved`
-**Assumptions if deferred:** —
+**Status:** `resolved` (formulario interactivo + matiz usuario)
 
-> **Do not start implementation until open questions in this file are resolved or explicitly deferred with recorded assumptions.**
+**Resolución registrada:**
+
+- **OQ-04-001 — A + configurable:** autoplay del siguiente **activado por defecto**; conmutable desde **panel parental** (Dexie `autoPlayNext`, default `true`). Hasta el prompt 07 se puede cambiar solo vía Dexie/consola o extensión futura del panel.
+- **OQ-04-002 — C:** “Siguientes” = **mezcla** búsqueda por título del vídeo actual + **uploads** del canal (implementado vía `GET /api/yt/related`).
+- **OQ-04-003 — Por defecto no + configurable:** **`showVideoComments` default `false`** en Dexie; si `true`, se muestran comentarios vía API dedicada. Panel parental (prompt 07) expondrá el interruptor.
+- **OQ-04-004 — A:** fullscreen **nativo** del iframe (YouTube).
+- **OQ-04-005 — Listado + reproducción:** contenido no infantil **no debe aparecer en listados** donde aplique filtro; si se accede por URL a un vídeo `madeForKids=false` con modo solo infantil **ON** → **bloquear reproducción** (`NotAvailable`), alineado con **A**.
 
 ## Componente Player
 
@@ -32,17 +37,17 @@ Página `/watch/[id]` con reproductor embebido (IFrame Player API), título, can
 
 ## Página `/watch/[id]`
 
-- Server component que llama `/api/yt/video/[id]` y `/api/yt/channel/[channelId]`.
-- Render: `<YouTubePlayer />`, título, métricas, expander de descripción, fila de acciones (Like decorativo, Share decorativo, **Bloquear** real → modal placeholder hasta prompt 08), `<RelatedList>`.
-- Si `madeForKids === false` y modo only-kids ON → render `<NotAvailable />`.
+- Cliente: datos con `useVideo` + `useRelated` + ajustes Dexie.
+- Render: `<YouTubePlayer />`, título, métricas, expander de descripción, fila de acciones (Like decorativo, Share decorativo, **Bloquear** → placeholder hasta prompt 08), `<RelatedList>`.
+- Si `madeForKids === false` y modo only-kids ON → `<NotAvailable />`.
 
 ## Lista de siguientes
 
-`src/components/player/RelatedList.tsx`: usa `useRelated(videoId)` que mezcla resultados de búsqueda por título + uploads del canal. Aplica filtros (prompt 06) antes de renderizar. Click → `router.push(`/watch/${id}`)`.
+`src/components/player/RelatedList.tsx`: datos de `useRelated` (API `related`). Click → `router.push(/watch/[id])`.
 
 ## Criterios de aceptación
 
-- Reproduce vídeos `madeForKids=true` correctamente.
-- Autoplay del siguiente filtrado funciona.
+- Reproduce vídeos `madeForKids=true` correctamente (modo solo infantil ON).
+- Autoplay del siguiente según `autoPlayNext` (default ON).
 - Botón Bloquear visible (sin lógica todavía).
-- Sin errores en consola del navegador.
+- Sin errores en consola del navegador (salvo avisos conocidos de terceros).

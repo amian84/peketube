@@ -1,6 +1,19 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 
+if (process.env.NODE_ENV === "development") {
+  if (!process.env.GOOGLE_CLIENT_ID?.trim()) {
+    console.warn(
+      "[auth] GOOGLE_CLIENT_ID no está definido o está vacío: el login con Google fallará (client_id).",
+    );
+  }
+  if (!process.env.GOOGLE_CLIENT_SECRET?.trim()) {
+    console.warn(
+      "[auth] GOOGLE_CLIENT_SECRET no está definido o está vacío: el login con Google fallará.",
+    );
+  }
+}
+
 const scope =
   "openid email profile https://www.googleapis.com/auth/youtube.readonly";
 

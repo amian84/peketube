@@ -1,13 +1,20 @@
+import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { getYouTubeAccessToken } from "@/lib/auth/youtube-token";
 import { mapPlaylistItemResource } from "@/lib/yt/mappers";
-import { isQuotaExceeded, youtubeGet } from "@/lib/yt/server-youtube";
+import { isQuotaExceeded, youtubeGetBearer } from "@/lib/yt/server-youtube";
 import type { PageDTO, PlaylistItemDTO } from "@/lib/yt/types";
 
 export async function GET(
-  req: Request,
+  req: NextRequest,
   ctx: { params: { id: string } },
 ) {
   try {
+    const accessToken = await getYouTubeAccessToken(req);
+    if (!accessToken) {
+      return NextResponse.json({ error: "AUTH_REQUIRED" }, { status: 401 });
+    }
+
     const playlistId = ctx.params.id;
     if (!playlistId) {
       return NextResponse.json({ error: "BAD_REQUEST" }, { status: 400 });
@@ -16,12 +23,16 @@ export async function GET(
     const { searchParams } = new URL(req.url);
     const pageToken = searchParams.get("pageToken") ?? undefined;
 
-    const { ok, status, json } = await youtubeGet("playlistItems", {
-      part: "snippet,contentDetails",
-      playlistId,
-      maxResults: "24",
-      pageToken,
-    });
+    const { ok, status, json } = await youtubeGetBearer(
+      accessToken,
+      "playlistItems",
+      {
+        part: "snippet,contentDetails",
+        playlistId,
+        maxResults: "24",
+        pageToken,
+      },
+    );
 
     if (!ok) {
       const statusOut = isQuotaExceeded(json) ? 429 : status;
@@ -53,13 +64,6 @@ export async function GET(
 
     return NextResponse.json(page);
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    if (msg.includes("YOUTUBE_API_KEY")) {
-      return NextResponse.json(
-        { error: "SERVER_CONFIG", message: msg },
-        { status: 500 },
-      );
-    }
     throw e;
   }
 }

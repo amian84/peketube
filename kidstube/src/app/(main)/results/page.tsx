@@ -1,7 +1,14 @@
+import { Suspense } from "react";
+import { ResultsClient } from "./results-client";
+
 export default function ResultsPage() {
   return (
-    <main className="flex min-h-dvh items-center justify-center px-4">
-      <p className="text-muted-foreground">Resultados — placeholder (prompt 03)</p>
-    </main>
+    <Suspense
+      fallback={
+        <div className="px-4 py-8 text-sm text-muted-foreground">Cargando…</div>
+      }
+    >
+      <ResultsClient />
+    </Suspense>
   );
 }

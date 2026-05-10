@@ -1,7 +1,13 @@
 "use client";
 
 import useSWR from "swr";
-import { fetchFeedPage, fetchSearchPage, fetchVideoById } from "@/lib/yt/client";
+import type { SearchFetchOptions } from "@/lib/yt/client";
+import {
+  fetchFeedPage,
+  fetchSearchPage,
+  fetchSubscriptionsPage,
+  fetchVideoById,
+} from "@/lib/yt/client";
 import type { PageDTO, VideoDTO } from "@/lib/yt/types";
 
 export function useFeed(videoCategoryId: number | null, pageToken?: string) {
@@ -14,13 +20,25 @@ export function useFeed(videoCategoryId: number | null, pageToken?: string) {
   });
 }
 
-export function useSearch(q: string | null, pageToken?: string) {
+export function useSearch(
+  q: string | null,
+  pageToken?: string,
+  opts?: SearchFetchOptions,
+) {
   const trimmed = q?.trim() ?? "";
+  const vd = opts?.videoDuration ?? "";
   const key =
     trimmed.length >= 2
-      ? (["yt-search", trimmed, pageToken ?? ""] as const)
+      ? (["yt-search", trimmed, pageToken ?? "", vd] as const)
       : null;
-  return useSWR(key, () => fetchSearchPage(trimmed, pageToken), {
+  return useSWR(key, () => fetchSearchPage(trimmed, pageToken, opts), {
+    revalidateOnFocus: false,
+  });
+}
+
+export function useSubscriptions(pageToken?: string) {
+  const key = ["yt-subs", pageToken ?? ""] as const;
+  return useSWR(key, () => fetchSubscriptionsPage(pageToken), {
     revalidateOnFocus: false,
   });
 }
@@ -31,3 +49,4 @@ export function useVideo(id: string | null) {
 }
 
 export type { PageDTO, VideoDTO };
+export type { SearchFetchOptions } from "@/lib/yt/client";

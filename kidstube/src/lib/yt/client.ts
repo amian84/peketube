@@ -69,17 +69,49 @@ export async function fetchFeedPage(
   return fetchJsonWithCache(cacheKey, s.feedTtlMs, url);
 }
 
+export type SearchFetchOptions = {
+  videoDuration?: "short" | "medium" | "long";
+};
+
 export async function fetchSearchPage(
   q: string,
   pageToken?: string,
+  opts?: SearchFetchOptions,
 ): Promise<{ data: PageDTO<VideoDTO> } & FetchMeta> {
   const s = await getSettingsFromDexie();
   const sp = new URLSearchParams();
   sp.set("q", q);
   appendSettingsQuery(sp, s);
   if (pageToken) sp.set("pageToken", pageToken);
+  if (opts?.videoDuration) sp.set("videoDuration", opts.videoDuration);
   const url = `/api/yt/search?${sp.toString()}`;
-  const cacheKey = `search:${q}:${pageToken ?? ""}:${s.strictKidsOnly}:${s.regionCode}:${s.allowedCategoryIds.join(",")}`;
+  const vd = opts?.videoDuration ?? "";
+  const cacheKey = `search:${q}:${pageToken ?? ""}:${vd}:${s.strictKidsOnly}:${s.regionCode}:${s.allowedCategoryIds.join(",")}`;
+  return fetchJsonWithCache(cacheKey, s.feedTtlMs, url);
+}
+
+export type SubscriptionListItem = {
+  subscriptionId: string;
+  channelId: string;
+  title: string;
+  description: string;
+  thumbnailUrl: string;
+};
+
+export type SubscriptionsPageDTO = {
+  items: SubscriptionListItem[];
+  nextPageToken?: string;
+  prevPageToken?: string;
+};
+
+export async function fetchSubscriptionsPage(
+  pageToken?: string,
+): Promise<{ data: SubscriptionsPageDTO } & FetchMeta> {
+  const s = await getSettingsFromDexie();
+  const sp = new URLSearchParams();
+  if (pageToken) sp.set("pageToken", pageToken);
+  const url = `/api/yt/subscriptions?${sp.toString()}`;
+  const cacheKey = `subscriptions:${pageToken ?? ""}`;
   return fetchJsonWithCache(cacheKey, s.feedTtlMs, url);
 }
 

@@ -50,3 +50,12 @@ export function parseSingleCategoryId(
   if (Number.isNaN(n) || !PARENT_CATEGORY_SET.has(n)) return null;
   return n;
 }
+
+/** YouTube `search.list` — `videoDuration` opcional (prompt 03 Shorts). */
+export function parseVideoDuration(
+  searchParams: URLSearchParams,
+): "short" | "medium" | "long" | undefined {
+  const v = searchParams.get("videoDuration");
+  if (v === "short" || v === "medium" || v === "long") return v;
+  return undefined;
+}

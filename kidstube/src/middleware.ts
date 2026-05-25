@@ -19,6 +19,7 @@ export default auth((req) => {
     pathname === "/favicon.ico" ||
     pathname === "/manifest.webmanifest" ||
     pathname.startsWith("/icons/") ||
+    pathname.startsWith("/splash/") ||
     pathname === "/sw.js" ||
     pathname.startsWith("/workbox")
   ) {

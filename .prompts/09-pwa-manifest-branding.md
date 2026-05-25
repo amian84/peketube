@@ -16,10 +16,15 @@ Manifest, iconos adaptive, splash, theme color para que la PWA se instale en el 
 | OQ-09-004 | Splash screen iOS | A) Generar set vía script (`pwa-asset-generator`) B) Solo Android (Chrome) | A más completo |
 | OQ-09-005 | Activar `display_override: ["window-controls-overlay","standalone"]` | A) standalone (default) B) Añadir overlay para ganar área | A simple |
 
-**Status:** `unresolved`
-**Assumptions if deferred:** —
+**Status:** `resolved` (formulario interactivo, 2026-05-19)
 
-> **Do not start implementation until open questions in this file are resolved or explicitly deferred with recorded assumptions.**
+| ID | Decisión |
+|----|----------|
+| OQ-09-001 | **name** y **short_name** = `"KidsTube"`; icono PWA **muy parecido** a YouTube (no usar nombre "YouTube" en el manifest). |
+| OQ-09-002 | **B** — `#E60000` |
+| OQ-09-003 | **B** — triángulo play más estrecho + radio de esquinas distinto |
+| OQ-09-004 | **A** — splash iOS + Android vía `pwa-asset-generator` |
+| OQ-09-005 | **A** — `display: standalone` |
 
 ## Pasos
 

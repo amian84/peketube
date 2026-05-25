@@ -64,8 +64,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       authorization: {
         params: {
           scope,
+          /** Refresh token en cookie JWT (30 días); sin `prompt: consent` en cada visita. */
           access_type: "offline",
-          prompt: "consent",
         },
       },
     }),
@@ -93,12 +93,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         };
       }
 
-      if (!token.refresh_token) return token;
-
       const expiresAtMs = ((token.expires_at as number) ?? 0) * 1000;
-      if (Date.now() < expiresAtMs - 60_000) {
-        return token;
+      const accessValid = Date.now() < expiresAtMs - 60_000;
+
+      if (!token.refresh_token) {
+        if (accessValid) return token;
+        return {
+          ...token,
+          access_token: undefined,
+          error: "RefreshAccessTokenError" as const,
+        };
       }
+
+      if (accessValid) return token;
 
       try {
         const refreshed = await refreshGoogleAccessToken(token);
@@ -110,7 +117,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           error: undefined,
         };
       } catch {
-        return { ...token, error: "RefreshAccessTokenError" as const };
+        return {
+          ...token,
+          access_token: undefined,
+          error: "RefreshAccessTokenError" as const,
+        };
       }
     },
     async session({ session, token }) {

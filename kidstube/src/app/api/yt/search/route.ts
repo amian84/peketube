@@ -1,9 +1,14 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { getYouTubeAccessToken } from "@/lib/auth/youtube-token";
 import { mapSearchItemToVideoDTO } from "@/lib/yt/mappers";
-import { isQuotaExceeded, youtubeGetBearer } from "@/lib/yt/server-youtube";
 import type { PageDTO, VideoDTO } from "@/lib/yt/types";
+import {
+  guestUnavailableResponse,
+  resolveYoutubeAccess,
+  youtubeErrorResponse,
+  youtubeGet,
+  type YoutubeAccess,
+} from "@/lib/yt/youtube-access";
 import {
   parseAllowedCategoryIds,
   parseRegionCode,
@@ -13,13 +18,13 @@ import {
 } from "@/lib/yt/validate-request";
 
 async function fetchVideosStatus(
-  accessToken: string,
+  access: YoutubeAccess,
   ids: string[],
 ): Promise<Map<string, boolean>> {
   const map = new Map<string, boolean>();
   for (let i = 0; i < ids.length; i += 50) {
     const chunk = ids.slice(i, i + 50);
-    const { ok, json } = await youtubeGetBearer(accessToken, "videos", {
+    const { ok, json } = await youtubeGet(access, "videos", {
       part: "status",
       id: chunk.join(","),
     });
@@ -40,9 +45,9 @@ async function fetchVideosStatus(
 }
 
 export async function GET(req: NextRequest) {
-  const accessToken = await getYouTubeAccessToken(req);
-  if (!accessToken) {
-    return NextResponse.json({ error: "AUTH_REQUIRED" }, { status: 401 });
+  const access = await resolveYoutubeAccess(req);
+  if (!access) {
+    return guestUnavailableResponse();
   }
 
   const { searchParams } = new URL(req.url);
@@ -66,7 +71,7 @@ export async function GET(req: NextRequest) {
       : undefined;
   const videoDuration = parseVideoDuration(searchParams);
 
-  const { ok, status, json } = await youtubeGetBearer(accessToken, "search", {
+  const { ok, status, json } = await youtubeGet(access, "search", {
     part: "snippet",
     type: "video",
     safeSearch: "strict",
@@ -81,15 +86,7 @@ export async function GET(req: NextRequest) {
   });
 
   if (!ok) {
-    const statusOut = isQuotaExceeded(json) ? 429 : status;
-    return NextResponse.json(
-      {
-        error: "YOUTUBE_API_ERROR",
-        message: json.error?.message,
-        quotaExceeded: isQuotaExceeded(json),
-      },
-      { status: statusOut },
-    );
+    return youtubeErrorResponse(access, status, json);
   }
 
   const rawItems = (json.items ?? []) as unknown[];
@@ -103,7 +100,7 @@ export async function GET(req: NextRequest) {
 
   if (strictKids && videos.length > 0) {
     const statusMap = await fetchVideosStatus(
-      accessToken,
+      access,
       videos.map((v) => v.id),
     );
     videos = videos.filter((v) => statusMap.get(v.id) === true);

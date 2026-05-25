@@ -1,6 +1,9 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { getYouTubeAccessToken } from "@/lib/auth/youtube-token";
+import {
+  authRequiredResponse,
+  requireUserYoutubeAccess,
+} from "@/lib/yt/youtube-access";
 
 function bestThumb(t: Record<string, { url?: string }> | undefined) {
   if (!t) return "";
@@ -10,10 +13,11 @@ function bestThumb(t: Record<string, { url?: string }> | undefined) {
 }
 
 export async function GET(req: NextRequest) {
-  const accessToken = await getYouTubeAccessToken(req);
-  if (!accessToken) {
-    return NextResponse.json({ error: "AUTH_REQUIRED" }, { status: 401 });
+  const access = await requireUserYoutubeAccess(req);
+  if (!access) {
+    return authRequiredResponse();
   }
+  const accessToken = access.mode === "user" ? access.token : "";
 
   const { searchParams } = new URL(req.url);
   const pageToken = searchParams.get("pageToken") ?? undefined;

@@ -1,7 +1,11 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { getYouTubeAccessToken } from "@/lib/auth/youtube-token";
-import { isQuotaExceeded, youtubeGetBearer } from "@/lib/yt/server-youtube";
+import {
+  authRequiredResponse,
+  requireUserYoutubeAccess,
+  youtubeErrorResponse,
+  youtubeGet,
+} from "@/lib/yt/youtube-access";
 import type { NotificationItemDTO } from "@/lib/yt/types";
 
 function bestThumb(t: Record<string, { url?: string }> | undefined): string {
@@ -33,9 +37,9 @@ function extractVideoId(cd: Record<string, unknown> | undefined): string | undef
  * las incluye en el feed `mine`.
  */
 export async function GET(req: NextRequest) {
-  const accessToken = await getYouTubeAccessToken(req);
-  if (!accessToken) {
-    return NextResponse.json({ error: "AUTH_REQUIRED" }, { status: 401 });
+  const access = await requireUserYoutubeAccess(req);
+  if (!access) {
+    return authRequiredResponse();
   }
 
   const { searchParams } = new URL(req.url);
@@ -44,26 +48,22 @@ export async function GET(req: NextRequest) {
     Math.max(5, parseInt(searchParams.get("maxResults") ?? "20", 10) || 20),
   );
 
-  const { ok, status, json } = await youtubeGetBearer(accessToken, "activities", {
+  const { ok, status, json } = await youtubeGet(access, "activities", {
     part: "snippet,contentDetails",
     mine: "true",
     maxResults: String(max),
   });
 
   if (!ok) {
-    const statusOut = isQuotaExceeded(json) ? 429 : status;
     const msg = json.error?.message ?? "";
     if (status === 404 && msg.includes("home")) {
       return NextResponse.json({ items: [] as NotificationItemDTO[] });
     }
+    const err = youtubeErrorResponse(access, status, json);
+    const body = await err.json();
     return NextResponse.json(
-      {
-        error: "YOUTUBE_API_ERROR",
-        message: msg,
-        quotaExceeded: isQuotaExceeded(json),
-        items: [] as NotificationItemDTO[],
-      },
-      { status: statusOut },
+      { ...body, items: [] as NotificationItemDTO[] },
+      { status: err.status },
     );
   }
 

@@ -163,6 +163,31 @@ export default function ParentalSettingsPage() {
       </section>
 
       <section className="space-y-2 rounded-lg border border-border p-4">
+        <h2 className="text-sm font-medium">Scroll infinito (home y búsqueda)</h2>
+        <p className="text-xs text-muted-foreground">
+          Máximo de vídeos que se cargan desde YouTube al bajar. Al llegar a ese
+          número ya no se piden más; si sigues bajando, la vista vuelve arriba y
+          repites la misma lista (24–300).
+        </p>
+        <label className="block text-xs text-muted-foreground">
+          Máx. vídeos antes del bucle
+          <input
+            type="number"
+            min={24}
+            max={300}
+            className="mt-1 w-full rounded border border-border bg-background px-2 py-2 text-sm"
+            value={s.scrollLoopMaxItems}
+            onChange={async (e) => {
+              const n = Math.floor(Number(e.target.value));
+              if (!Number.isFinite(n) || n < 24 || n > 300) return;
+              const merged = await saveSettingsToDexie({ scrollLoopMaxItems: n });
+              setS(merged);
+            }}
+          />
+        </label>
+      </section>
+
+      <section className="space-y-2 rounded-lg border border-border p-4">
         <h2 className="text-sm font-medium">Solo contenido infantil (madeForKids)</h2>
         <label className="flex items-center gap-2 text-sm">
           <input

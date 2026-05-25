@@ -1,9 +1,13 @@
 "use client";
 
+import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { ChannelRow } from "@/components/video/channel-row";
 import { useBlacklist } from "@/components/providers/blacklist-provider";
-import { fetchSubscriptionsPage } from "@/lib/yt/client";
+import { fetchSubscriptionsPage, isYouTubeAuthError } from "@/lib/yt/client";
 import type { SubscriptionListItem } from "@/lib/yt/client";
 import {
   DEFAULT_SUBSCRIPTIONS_DESIRED,
@@ -11,14 +15,24 @@ import {
 } from "@/lib/yt/fill-filtered-page";
 
 export function SubscriptionsFeed() {
+  const { status: authStatus } = useSession();
   const { snapshot, ready } = useBlacklist();
   const [items, setItems] = useState<SubscriptionListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [needsSignIn, setNeedsSignIn] = useState(false);
 
   useEffect(() => {
-    if (!ready) return;
+    if (!ready || authStatus === "loading") return;
+    if (authStatus !== "authenticated") {
+      setLoading(false);
+      setNeedsSignIn(true);
+      setItems([]);
+      return;
+    }
+
     let cancelled = false;
+    setNeedsSignIn(false);
     (async () => {
       setLoading(true);
       setError(false);
@@ -29,9 +43,10 @@ export function SubscriptionsFeed() {
           DEFAULT_SUBSCRIPTIONS_DESIRED,
         );
         if (!cancelled) setItems(agg);
-      } catch {
+      } catch (e) {
         if (!cancelled) {
-          setError(true);
+          setError(!isYouTubeAuthError(e));
+          setNeedsSignIn(isYouTubeAuthError(e));
           setItems([]);
         }
       } finally {
@@ -41,7 +56,24 @@ export function SubscriptionsFeed() {
     return () => {
       cancelled = true;
     };
-  }, [snapshot, ready]);
+  }, [snapshot, ready, authStatus]);
+
+  if (needsSignIn) {
+    return (
+      <div className="px-3 pb-24 pt-2">
+        <h1 className="mb-2 px-1 text-lg font-semibold">Suscripciones</h1>
+        <p className="mb-4 px-1 text-sm text-muted-foreground">
+          Para ver tus canales suscritos necesitas conectar tu cuenta de Google.
+        </p>
+        <Link
+          href="/sign-in?callbackUrl=/subscriptions"
+          className={cn(buttonVariants())}
+        >
+          Conectar con Google
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="px-3 pb-24 pt-2">

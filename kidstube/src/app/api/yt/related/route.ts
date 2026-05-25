@@ -1,12 +1,16 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { getYouTubeAccessToken } from "@/lib/auth/youtube-token";
 import {
   mapPlaylistItemResource,
   mapSearchItemToVideoDTO,
 } from "@/lib/yt/mappers";
-import { youtubeGetBearer } from "@/lib/yt/server-youtube";
 import type { PageDTO, PlaylistItemDTO, VideoDTO } from "@/lib/yt/types";
+import {
+  guestUnavailableResponse,
+  resolveYoutubeAccess,
+  youtubeGet,
+  type YoutubeAccess,
+} from "@/lib/yt/youtube-access";
 import {
   parseRegionCode,
   parseRelevanceLanguage,
@@ -14,13 +18,13 @@ import {
 } from "@/lib/yt/validate-request";
 
 async function fetchMadeForKidsMap(
-  accessToken: string,
+  access: YoutubeAccess,
   ids: string[],
 ): Promise<Map<string, boolean>> {
   const map = new Map<string, boolean>();
   for (let i = 0; i < ids.length; i += 50) {
     const chunk = ids.slice(i, i + 50);
-    const { ok, json } = await youtubeGetBearer(accessToken, "videos", {
+    const { ok, json } = await youtubeGet(access, "videos", {
       part: "status",
       id: chunk.join(","),
     });
@@ -82,11 +86,11 @@ function playlistDtoToVideo(p: PlaylistItemDTO): VideoDTO {
   };
 }
 
-/** OQ-04-002 C — mezcla búsqueda por título + uploads del canal. */
+/** Mezcla búsqueda por título + uploads del canal (OAuth o invitado). */
 export async function GET(req: NextRequest) {
-  const accessToken = await getYouTubeAccessToken(req);
-  if (!accessToken) {
-    return NextResponse.json({ error: "AUTH_REQUIRED" }, { status: 401 });
+  const access = await resolveYoutubeAccess(req);
+  if (!access) {
+    return guestUnavailableResponse();
   }
 
   const { searchParams } = new URL(req.url);
@@ -107,7 +111,7 @@ export async function GET(req: NextRequest) {
 
   const fromSearch: VideoDTO[] = [];
   if (titleRaw.length >= 2) {
-    const { ok, json } = await youtubeGetBearer(accessToken, "search", {
+    const { ok, json } = await youtubeGet(access, "search", {
       part: "snippet",
       type: "video",
       safeSearch: "strict",
@@ -128,7 +132,7 @@ export async function GET(req: NextRequest) {
   }
 
   const fromPlaylist: VideoDTO[] = [];
-  const { ok: chOk, json: chJson } = await youtubeGetBearer(accessToken, "channels", {
+  const { ok: chOk, json: chJson } = await youtubeGet(access, "channels", {
     part: "contentDetails",
     id: channelId,
   });
@@ -139,8 +143,8 @@ export async function GET(req: NextRequest) {
     };
     const uploadsId = raw.contentDetails?.relatedPlaylists?.uploads?.trim();
     if (uploadsId) {
-      const { ok: plOk, json: plJson } = await youtubeGetBearer(
-        accessToken,
+      const { ok: plOk, json: plJson } = await youtubeGet(
+        access,
         "playlistItems",
         {
           part: "snippet,contentDetails",
@@ -167,7 +171,7 @@ export async function GET(req: NextRequest) {
 
   if (strictKids && merged.length > 0) {
     const statusMap = await fetchMadeForKidsMap(
-      accessToken,
+      access,
       merged.map((v) => v.id),
     );
     merged = merged.filter((v) => statusMap.get(v.id) === true);

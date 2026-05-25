@@ -1,16 +1,20 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { getYouTubeAccessToken } from "@/lib/auth/youtube-token";
-import { isQuotaExceeded, youtubeGetBearer } from "@/lib/yt/server-youtube";
 import type { VideoCommentDTO } from "@/lib/yt/types";
+import {
+  guestUnavailableResponse,
+  resolveYoutubeAccess,
+  youtubeErrorResponse,
+  youtubeGet,
+} from "@/lib/yt/youtube-access";
 
 export async function GET(
   req: NextRequest,
   ctx: { params: { id: string } },
 ) {
-  const accessToken = await getYouTubeAccessToken(req);
-  if (!accessToken) {
-    return NextResponse.json({ error: "AUTH_REQUIRED" }, { status: 401 });
+  const access = await resolveYoutubeAccess(req);
+  if (!access) {
+    return guestUnavailableResponse();
   }
 
   const videoId = ctx.params.id?.trim();
@@ -18,29 +22,20 @@ export async function GET(
     return NextResponse.json({ error: "BAD_REQUEST" }, { status: 400 });
   }
 
-  const { ok, status, json } = await youtubeGetBearer(
-    accessToken,
-    "commentThreads",
-    {
-      part: "snippet",
-      videoId,
-      maxResults: "20",
-      order: "relevance",
-      textFormat: "plainText",
-    },
-  );
+  const { ok, status, json } = await youtubeGet(access, "commentThreads", {
+    part: "snippet",
+    videoId,
+    maxResults: "20",
+    order: "relevance",
+    textFormat: "plainText",
+  });
 
   if (!ok) {
-    const statusOut = isQuotaExceeded(json) ? 429 : status;
-    return NextResponse.json(
-      {
-        error: "YOUTUBE_API_ERROR",
-        message: json.error?.message,
-        quotaExceeded: isQuotaExceeded(json),
-        items: [] as VideoCommentDTO[],
-      },
-      { status: statusOut },
-    );
+    const err = youtubeErrorResponse(access, status, json);
+    const body = await err.json();
+    return NextResponse.json({ ...body, items: [] as VideoCommentDTO[] }, {
+      status: err.status,
+    });
   }
 
   const raw = (json.items ?? []) as Array<{

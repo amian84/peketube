@@ -9,7 +9,34 @@ import type {
   ChannelDTO,
 } from "@/lib/yt/types";
 
-export type FetchMeta = { stale?: boolean; quotaExceeded?: boolean };
+export type FetchMeta = {
+  stale?: boolean;
+  quotaExceeded?: boolean;
+  guestQuotaExceeded?: boolean;
+};
+
+export function isYouTubeAuthError(e: unknown): boolean {
+  return e instanceof Error && e.message === "AUTH_REQUIRED";
+}
+
+export function isGuestQuotaError(e: unknown): boolean {
+  return e instanceof Error && e.message === "GUEST_QUOTA_EXCEEDED";
+}
+
+export function isGuestUnavailableError(e: unknown): boolean {
+  if (!(e instanceof Error)) return false;
+  return (
+    e.message.includes("Modo invitado no está disponible") ||
+    e.message.includes("Modo invitado no disponible")
+  );
+}
+
+type ApiErrorBody = {
+  error?: string;
+  message?: string;
+  quotaExceeded?: boolean;
+  guestMode?: boolean;
+};
 
 export async function fetchJsonWithCache<T>(
   cacheKey: string,
@@ -27,16 +54,35 @@ export async function fetchJsonWithCache<T>(
     }
   }
   try {
-    const res = await fetch(url);
-    const body = (await res.json()) as T & { quotaExceeded?: boolean };
+    const res = await fetch(url, { credentials: "same-origin" });
+    const body = (await res.json()) as T & ApiErrorBody;
     if (!res.ok) {
-      const quotaExceeded = res.status === 429 || body?.quotaExceeded === true;
-      if (stalePayload !== undefined) {
+      const apiBody = body as ApiErrorBody;
+      const guestQuotaExceeded =
+        apiBody.error === "GUEST_QUOTA_EXCEEDED" ||
+        (apiBody.guestMode === true && apiBody.quotaExceeded === true);
+      const quotaExceeded =
+        guestQuotaExceeded ||
+        res.status === 429 ||
+        apiBody.quotaExceeded === true;
+      if (guestQuotaExceeded) {
+        throw new Error("GUEST_QUOTA_EXCEEDED");
+      }
+      if (res.status === 401 || res.status === 403) {
+        throw new Error("AUTH_REQUIRED");
+      }
+      if (apiBody.error === "GUEST_UNAVAILABLE") {
+        throw new Error(
+          apiBody.message ??
+            "Modo invitado no disponible. Conecta tu cuenta de Google.",
+        );
+      }
+      if (stalePayload !== undefined && !quotaExceeded) {
         return { data: stalePayload, stale: true, quotaExceeded };
       }
       const msg =
         typeof body === "object" && body && "message" in body
-          ? String((body as { message?: string }).message ?? res.statusText)
+          ? String(apiBody.message ?? res.statusText)
           : res.statusText;
       throw new Error(msg);
     }
@@ -49,6 +95,7 @@ export async function fetchJsonWithCache<T>(
     }
     return { data: body as T };
   } catch (e) {
+    if (isYouTubeAuthError(e)) throw e;
     if (stalePayload !== undefined) return { data: stalePayload, stale: true };
     throw e;
   }
@@ -81,7 +128,7 @@ export async function fetchFeedPage(
   appendSettingsQuery(sp, s);
   if (pageToken) sp.set("pageToken", pageToken);
   const url = `/api/yt/feed?${sp.toString()}`;
-  const cacheKey = `feed:${videoCategoryId}:${pageToken ?? ""}:${s.strictKidsOnly}:${s.regionCode}`;
+  const cacheKey = `feed:${videoCategoryId}:${pageToken ?? ""}:${s.strictKidsOnly}:${s.regionCode}:${s.relevanceLanguage}:${s.allowedCategoryIds.join(",")}`;
   return fetchJsonWithCache(cacheKey, s.feedTtlMs, url);
 }
 

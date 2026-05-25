@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import { useSession } from "next-auth/react";
+import { hasYouTubeOAuth } from "@/lib/auth/use-youtube-auth";
 import * as bl from "@/lib/db/blacklist";
 import {
   emptyBlacklistSnapshot,
@@ -32,7 +33,8 @@ export type BlacklistContextValue = {
 const BlacklistContext = createContext<BlacklistContextValue | null>(null);
 
 export function BlacklistProvider({ children }: { children: React.ReactNode }) {
-  const { status } = useSession();
+  const { status, data: session } = useSession();
+  const oauthReady = hasYouTubeOAuth(status, session?.error);
   const [snapshot, setSnapshot] = useState<BlacklistSnapshot>(
     emptyBlacklistSnapshot(),
   );
@@ -52,7 +54,7 @@ export function BlacklistProvider({ children }: { children: React.ReactNode }) {
       if (!alive) return;
       setSnapshot(local);
       setReady(true);
-      if (status === "authenticated") {
+      if (oauthReady) {
         try {
           await bl.pullBlacklistFromServer();
           if (!alive) return;
@@ -66,7 +68,7 @@ export function BlacklistProvider({ children }: { children: React.ReactNode }) {
     return () => {
       alive = false;
     };
-  }, [status]);
+  }, [status, oauthReady]);
 
   const blockChannel = useCallback(
     async (channelId: string) => {

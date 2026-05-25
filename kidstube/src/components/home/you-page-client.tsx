@@ -2,7 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useSession } from "next-auth/react";
+import { buttonVariants } from "@/components/ui/button";
+import { useYouTubeAuth } from "@/lib/auth/use-youtube-auth";
+import { cn } from "@/lib/utils";
 import { useCallback, useEffect, useState } from "react";
 import { VideoCard } from "@/components/video/video-card";
 import { useBlacklist } from "@/components/providers/blacklist-provider";
@@ -89,14 +91,33 @@ function YouHistorySection() {
 }
 
 export function YouPageClient() {
-  const { data: session, status } = useSession();
+  const { oauthReady, ytReady, session } = useYouTubeAuth();
   const user = session?.user;
   const label = user?.name ?? user?.email ?? "Cuenta";
 
-  if (status === "loading") {
+  if (!ytReady) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center px-4">
         <p className="text-sm text-muted-foreground">Cargando…</p>
+      </div>
+    );
+  }
+
+  if (!oauthReady) {
+    return (
+      <div className="flex flex-col items-center gap-6 px-4 pb-24 pt-6">
+        <p className="text-center text-lg font-medium">Modo invitado</p>
+        <p className="max-w-sm text-center text-sm text-muted-foreground">
+          Conecta tu cuenta de Google para ver tu perfil, suscripciones y usar tu
+          cuota de YouTube.
+        </p>
+        <Link
+          href="/sign-in?callbackUrl=%2Fyou"
+          className={cn(buttonVariants(), "min-w-[220px] justify-center")}
+        >
+          Iniciar sesión con Google
+        </Link>
+        <YouHistorySection />
       </div>
     );
   }

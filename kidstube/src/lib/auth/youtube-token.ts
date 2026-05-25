@@ -12,6 +12,7 @@ export async function getYouTubeAccessToken(
   const secret = authSecret();
   if (!secret) return null;
   const token = await getToken({ req, secret });
+  if (token?.error === "RefreshAccessTokenError") return null;
   const at = token?.access_token;
-  return typeof at === "string" ? at : null;
+  return typeof at === "string" && at.length > 0 ? at : null;
 }

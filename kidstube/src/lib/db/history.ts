@@ -1,6 +1,32 @@
 import { getKidstubeDb, type WatchHistoryRow } from "@/lib/db/schema";
 import { getSettingsFromDexie } from "@/lib/db/settings";
+import {
+  applyBlacklist,
+  type BlacklistSnapshot,
+} from "@/lib/yt/filter";
 import type { VideoDTO } from "@/lib/yt/types";
+
+export function watchHistoryRowToVideo(row: WatchHistoryRow): VideoDTO {
+  return {
+    id: row.videoId,
+    title: row.title,
+    description: "",
+    channelId: row.channelId,
+    channelTitle: row.channelTitle,
+    thumbnailUrl: row.thumbnailUrl,
+    publishedAt: new Date(row.watchedAt).toISOString(),
+    durationSec: row.durationSec,
+  };
+}
+
+/** Vídeos del historial local (sin API) cuando YouTube no responde. */
+export async function listHistoryAsVideos(
+  snapshot: BlacklistSnapshot,
+  limit = 40,
+): Promise<VideoDTO[]> {
+  const rows = await listHistory({ limit });
+  return applyBlacklist(rows.map(watchHistoryRowToVideo), snapshot);
+}
 
 const DAY_MS = 86_400_000;
 

@@ -38,6 +38,11 @@ export interface KidstubeSettings {
   historyRetentionDays: number;
   /** OQ-07-003 — TTL sesión parental (ms), default 5 min. */
   parentalSessionTtlMs: number;
+  /**
+   * Máx. vídeos en home y en resultados de búsqueda antes de dejar de pedir a la
+   * API; al seguir bajando se vuelve al inicio de la lista (24–300).
+   */
+  scrollLoopMaxItems: number;
 }
 
 export const DEFAULT_KIDSTUBE_SETTINGS: KidstubeSettings = {
@@ -52,6 +57,7 @@ export const DEFAULT_KIDSTUBE_SETTINGS: KidstubeSettings = {
   historyRecordMode: "on_play",
   historyRetentionDays: 30,
   parentalSessionTtlMs: DEFAULT_PARENTAL_SESSION_TTL_MS,
+  scrollLoopMaxItems: 80,
 };
 
 function mergeSettings(raw: unknown): KidstubeSettings {
@@ -106,6 +112,10 @@ function mergeSettings(raw: unknown): KidstubeSettings {
     if (t >= MIN_PARENTAL_SESSION_TTL_MS && t <= MAX_PARENTAL_SESSION_TTL_MS) {
       base.parentalSessionTtlMs = t;
     }
+  }
+  if (typeof o.scrollLoopMaxItems === "number") {
+    const n = Math.floor(o.scrollLoopMaxItems);
+    if (n >= 24 && n <= 300) base.scrollLoopMaxItems = n;
   }
   return base;
 }

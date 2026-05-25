@@ -14,22 +14,28 @@ Botón en `/watch/[id]` que permite bloquear el vídeo o el canal actual previo 
 | OQ-08-002 | Reusar sesión parental ya desbloqueada (5 min) | A) Sí (no pedir PIN otra vez en ventana) B) Siempre pedir PIN para bloquear (más seguro) | B coherente con OQ-07-003 |
 | OQ-08-003 | Confirmación visual | A) Toast "Bloqueado" B) Modal con detalle | A no rompe flujo |
 
-**Status:** `unresolved`
-**Assumptions if deferred:** —
+**Status:** `resolved`
 
-> **Do not start implementation until open questions in this file are resolved or explicitly deferred with recorded assumptions.**
+**Resolución registrada (implementación 08 — alineada con la columna Notes / recomendaciones del propio prompt)**
+
+| ID | Decisión aplicada en código |
+|----|------------------------------|
+| OQ-08-001 | **B** — Tras bloquear, navegar al **primer vídeo de “relacionados”** que siga pasando el filtro de blacklist tras `readBlacklistSnapshot()`; si no hay ninguno, **`/`**. Ver `navigateAfterWatchBlock`. |
+| OQ-08-002 | **B** — **Siempre** se muestra `PinDialog` antes de bloquear (vídeo, canal o palabra); no se reutiliza la ventana de sesión parental de 5 min para saltar el PIN. |
+| OQ-08-003 | **A** — Mensaje efímero “Bloqueado.” (banner fijo ~2,4 s), sin librería de toasts. |
 
 ## Componentes
 
-- `<BlockButton videoId channelId channelTitle videoTitle>` en la fila de acciones del watch.
-- `<BlockSheet>`: bottom sheet con dos opciones: "Bloquear vídeo", "Bloquear canal". Tras elegir → `<PinDialog>`.
-- `<PinDialog>` reutilizable (importable también desde otros sitios).
+- Botón **Bloquear** en la fila de acciones de `/watch` (`watch-page-client.tsx`; mismo rol que un `BlockButton` dedicado).
+- `BlockSheet` — `src/components/player/block-sheet.tsx` (bottom sheet en móvil, panel centrado en `sm+`; vídeo, canal y palabra en título).
+- `PinDialog` — `src/components/parental/pin-dialog.tsx` (reutilizable; `verifyPin` + cooldown vía `attempts.ts`).
+- Navegación post-bloqueo — `src/lib/parental/navigate-after-watch-block.ts` (tests en `navigate-after-watch-block.test.ts`).
 
 ## Flujo
 
 1. Tap en "Bloquear" → `<BlockSheet>`.
 2. Elegir opción → `<PinDialog>`.
-3. PIN OK → `blockVideo()` o `blockChannel()` → toast → según OQ-08-001.
+3. PIN OK → `blockVideo()` / `blockChannel()` / `blockTitleKeyword()` → mensaje “Bloqueado.” → navegación (OQ-08-001 B).
 
 ## Criterios de aceptación
 

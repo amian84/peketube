@@ -1,17 +1,19 @@
 "use client";
 
-import { useSession } from "next-auth/react";
 import Image from "next/image";
+import { useYouTubeAuth } from "@/lib/auth/use-youtube-auth";
 
-/** OQ-02-003 A — nombre y avatar reales (Google). */
+/** Avatar de Google solo con OAuth válido (no en modo invitado). */
 export function UserAvatar({ compact }: { compact?: boolean }) {
-  const { data: session, status } = useSession();
+  const { oauthReady, ytReady, session } = useYouTubeAuth();
 
-  if (status === "loading") {
-    return <div className="h-8 w-8 shrink-0 rounded-full bg-muted animate-pulse" />;
+  if (!ytReady) {
+    return (
+      <div className="h-8 w-8 shrink-0 rounded-full bg-muted animate-pulse" />
+    );
   }
 
-  if (!session?.user) {
+  if (!oauthReady || !session?.user) {
     return null;
   }
 

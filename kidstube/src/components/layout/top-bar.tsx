@@ -6,11 +6,13 @@ import { useCallback, useRef, useState } from "react";
 import { Search } from "lucide-react";
 import { useLongPress } from "@/hooks/use-long-press";
 import { NotificationsPopover } from "@/components/layout/notifications-popover";
-import { UserAvatar } from "@/components/layout/user-avatar";
+import { TopBarAccount } from "@/components/layout/top-bar-account";
+import { useYouTubeAuth } from "@/lib/auth/use-youtube-auth";
 import { YoutubeLogo } from "@/components/layout/youtube-logo";
 import { Button } from "@/components/ui/button";
 
 export function TopBar() {
+  const { oauthReady } = useYouTubeAuth();
   const router = useRouter();
   const [q, setQ] = useState("");
   const skipHomeNavRef = useRef(false);
@@ -76,15 +78,9 @@ export function TopBar() {
           </Button>
         </form>
 
-        <NotificationsPopover />
+        {oauthReady ? <NotificationsPopover /> : null}
 
-        <Link
-          href="/you"
-          className="shrink-0 rounded-full pl-1 outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
-          aria-label="Tu cuenta"
-        >
-          <UserAvatar compact />
-        </Link>
+        <TopBarAccount />
       </div>
     </header>
   );

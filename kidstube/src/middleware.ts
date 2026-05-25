@@ -2,7 +2,8 @@ import { auth } from "@/auth";
 import { NextResponse } from "next/server";
 
 /**
- * OQ-02-001 B: login obligatorio salvo `/sign-in` y rutas de Auth + estáticos.
+ * Rutas públicas sin login; `/parental` sigue protegido.
+ * Modo invitado usa YOUTUBE_API_KEY en `/api/yt/*`.
  */
 export default auth((req) => {
   const { pathname } = req.nextUrl;
@@ -24,17 +25,30 @@ export default auth((req) => {
     return NextResponse.next();
   }
 
-  if (!req.auth) {
-    const url = new URL("/sign-in", req.nextUrl.origin);
-    url.searchParams.set("callbackUrl", pathname + req.nextUrl.search);
-    return NextResponse.redirect(url);
+  if (pathname.startsWith("/parental")) {
+    if (!req.auth) {
+      const url = new URL("/sign-in", req.nextUrl.origin);
+      url.searchParams.set("callbackUrl", pathname + req.nextUrl.search);
+      return NextResponse.redirect(url);
+    }
+    const authError = (req.auth as { error?: string }).error;
+    if (authError === "RefreshAccessTokenError") {
+      const url = new URL("/sign-in", req.nextUrl.origin);
+      url.searchParams.set("reason", "session_expired");
+      url.searchParams.set("callbackUrl", pathname + req.nextUrl.search);
+      return NextResponse.redirect(url);
+    }
+    return NextResponse.next();
   }
+
+  // Sesión OAuth caducada: no forzar /sign-in en rutas públicas; el cliente hace
+  // signOut y las APIs usan modo invitado (YOUTUBE_API_KEY).
 
   return NextResponse.next();
 });
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|.*\\.(?:ico|png|jpg|jpeg|gif|webp|svg)$).*)",
+    "/((?!_next/|__nextjs|.*\\.(?:ico|png|jpg|jpeg|gif|webp|svg|woff2?|ttf|eot)$).*)",
   ],
 };

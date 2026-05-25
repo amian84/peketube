@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ShortCard } from "@/components/video/short-card";
 import { useBlacklist } from "@/components/providers/blacklist-provider";
 import { fetchSearchPage } from "@/lib/yt/client";
@@ -18,10 +18,14 @@ export function ShortsFeed() {
   const [items, setItems] = useState<VideoDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const loadGenRef = useRef(0);
 
   useEffect(() => {
     if (!ready) return;
+    const myGen = ++loadGenRef.current;
     let cancelled = false;
+    const isStale = () =>
+      cancelled || myGen !== loadGenRef.current;
     (async () => {
       setLoading(true);
       setError(false);
@@ -34,14 +38,14 @@ export function ShortsFeed() {
           snapshot,
           DEFAULT_SHORTS_DESIRED,
         );
-        if (!cancelled) setItems(agg);
+        if (!isStale()) setItems(agg);
       } catch {
-        if (!cancelled) {
+        if (!isStale()) {
           setError(true);
           setItems([]);
         }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!isStale()) setLoading(false);
       }
     })();
     return () => {

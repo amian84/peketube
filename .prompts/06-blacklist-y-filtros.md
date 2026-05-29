@@ -33,7 +33,7 @@ Bloqueos definitivos del padre. Cualquier lista de vídeos que se renderice en l
 ### Notas técnicas OQ-06-004
 
 - Añadir dependencia/driver SQLite acorde al runtime de Next (p. ej. `better-sqlite3` o alternativa válida en el despliegue elegido).
-- Ruta del fichero vía variable de entorno (`KIDSTUBE_SERVER_DB_PATH` o `BLACKLIST_DB_PATH`) con default `./data/kidstube.sqlite` en desarrollo; documentar que en serverless puro el fichero puede no ser adecuado (si aplica al hosting del usuario).
+- Ruta del fichero vía variable de entorno (`PEKETUBE_SERVER_DB_PATH` o `BLACKLIST_DB_PATH`) con default `./data/peketube.sqlite` en desarrollo; documentar que en serverless puro el fichero puede no ser adecuado (si aplica al hosting del usuario).
 - Rutas API autenticadas: lectura/escritura de snapshot de blacklist por usuario; el **cliente sigue aplicando el filtro** sobre listas ya obtenidas (YouTube API), usando el snapshot **sincronizado** (más caché local opcional si se desea offline).
 
 ## API (cliente local + servidor)

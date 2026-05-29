@@ -1,0 +1,41 @@
+# Ejemplo de despliegue para TrueNAS SCALE (Apps → Custom App → Install via YAML)
+# o `docker compose up -d` en cualquier host con Docker.
+#
+# Requisitos:
+# - Dataset persistente para SQLite, p. ej. /mnt/tank/apps/peketube/data
+# - Red Docker compartida con Caddy (red externa "caddy_net") para que el
+#   proxy llegue al contenedor por nombre DNS.
+#
+# Variables obligatorias en .env (junto a este compose):
+#   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, AUTH_SECRET, NEXTAUTH_URL, YOUTUBE_API_KEY
+services:
+  peketube:
+    image: ghcr.io/TU_USUARIO/peketube:latest
+    container_name: peketube
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: 0.0.0.0
+      PEKETUBE_SERVER_DB_PATH: /data/peketube.sqlite
+      NEXTAUTH_URL: ${NEXTAUTH_URL}
+      AUTH_SECRET: ${AUTH_SECRET}
+      AUTH_TRUST_HOST: "true"
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      YOUTUBE_API_KEY: ${YOUTUBE_API_KEY}
+    volumes:
+      - /mnt/tank/apps/peketube/data:/data
+    networks:
+      - caddy_net
+    # Sin "ports:" expuestos al host: el acceso entra por Caddy.
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+networks:
+  caddy_net:
+    external: true

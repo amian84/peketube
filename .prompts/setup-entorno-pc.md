@@ -1,6 +1,6 @@
 **Prompt type:** `documentation`
 
-# KidsTube — Preparar entorno (PC Fedora) para PWA Next.js
+# PekeTube — Preparar entorno (PC Fedora) para PWA Next.js
 
 ## Prerequisites
 
@@ -52,7 +52,7 @@ La instalación de PWA exige HTTPS (excepto `localhost`). Para probar en el móv
 
 ## 4. Google Cloud Console
 
-1. [console.cloud.google.com](https://console.cloud.google.com/) → crear proyecto **KidsTube**.
+1. [console.cloud.google.com](https://console.cloud.google.com/) → crear proyecto **PekeTube**.
 2. **APIs & Services → Library** → habilitar **YouTube Data API v3**.
 3. **Credentials:**
    - **API key** restringida por **HTTP referrers**: añadir `http://localhost:3000/*` y la URL HTTPS del túnel (`https://*.trycloudflare.com/*` o tu subdominio).

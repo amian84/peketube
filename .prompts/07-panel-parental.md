@@ -36,7 +36,7 @@ Acceso oculto vía long-press 5s en el logo. PIN PBKDF2 (Web Crypto). Pantallas:
 
 ## Cripto del PIN
 
-**Persistencia (cross-device):** mismo SQLite servidor que la blacklist (`user_parental_pin` por `user_id` = `sub` del JWT; ruta `KIDSTUBE_SERVER_DB_PATH` o `BLACKLIST_DB_PATH`; ver prompt **12**). Solo salt + hash + iter; nunca PIN ni frase en claro.
+**Persistencia (cross-device):** mismo SQLite servidor que la blacklist (`user_parental_pin` por `user_id` = `sub` del JWT; ruta `PEKETUBE_SERVER_DB_PATH` o `BLACKLIST_DB_PATH`; ver prompt **12**). Solo salt + hash + iter; nunca PIN ni frase en claro.
 
 **Servidor:** `src/lib/parental/pin-node.ts` — PBKDF2-SHA256, 250k iter, 32 B salida (alineado con `src/lib/parental/constants.ts`), comparación constante (`timingSafeEqual`).
 

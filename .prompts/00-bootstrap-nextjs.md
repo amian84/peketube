@@ -11,20 +11,20 @@ Inicializar el proyecto Next.js 14 (App Router, TS, Tailwind), añadir shadcn/ui
 | ID | Question | Options | Notes |
 |----|----------|---------|-------|
 | OQ-00-001 | Gestor de paquetes | A) pnpm (recomendado, ya en `setup-entorno-pc.md`) B) npm C) yarn | pnpm por velocidad y disco |
-| OQ-00-002 | Nombre del paquete y carpeta del proyecto | A) `kidstube` B) `youtube-kids-disguise` C) otro | Solo afecta nombres internos |
+| OQ-00-002 | Nombre del paquete y carpeta del proyecto | A) `peketube` B) `youtube-kids-disguise` C) otro | Solo afecta nombres internos |
 | OQ-00-003 | Activar Service Worker en `pnpm dev` | A) Solo producción (default `next-pwa`) B) También en dev (PWA debug) | A es lo habitual |
 | OQ-00-004 | App Router locale | A) `es` B) `en` C) detectar navegador | UI en español por contexto del usuario |
 
 **Status:** `deferred` (implementación 00 ejecutada con decisiones por defecto)
 
-**Assumptions if deferred:** OQ-00-001 → **pnpm**. OQ-00-002 → carpeta **`kidstube/`** bajo el repo (`.prompts` permanece en la raíz). OQ-00-003 → **PWA solo en producción** (`disable` en `development`). OQ-00-004 → **`lang="es"`** en el layout.
+**Assumptions if deferred:** OQ-00-001 → **pnpm**. OQ-00-002 → carpeta **`peketube/`** bajo el repo (`.prompts` permanece en la raíz). OQ-00-003 → **PWA solo en producción** (`disable` en `development`). OQ-00-004 → **`lang="es"`** en el layout.
 
 > **Do not start implementation until open questions in this file are resolved or explicitly deferred with recorded assumptions.**
 
 ## Pasos
 
-1. `pnpm create next-app@latest kidstube --typescript --tailwind --eslint --app --src-dir --import-alias "@/*"`
-2. `cd kidstube && pnpm dlx shadcn@latest init` (estilo Default, color base Neutral, CSS variables on, dark mode class).
+1. `pnpm create next-app@latest peketube --typescript --tailwind --eslint --app --src-dir --import-alias "@/*"`
+2. `cd peketube && pnpm dlx shadcn@latest init` (estilo Default, color base Neutral, CSS variables on, dark mode class).
 3. Añadir `next-pwa`:
    ```bash
    pnpm add next-pwa
@@ -59,7 +59,7 @@ Inicializar el proyecto Next.js 14 (App Router, TS, Tailwind), añadir shadcn/ui
    - `lang="es"`, `<html className="dark">`.
    - Meta `viewport`, `theme-color`, `apple-mobile-web-app-capable`.
    - Link al `manifest.webmanifest` (vacío de momento; se completa en prompt 09).
-7. Página Home placeholder con el texto "KidsTube" centrado y un botón shadcn `<Button>` para validar Tailwind + shadcn.
+7. Página Home placeholder con el texto "PekeTube" centrado y un botón shadcn `<Button>` para validar Tailwind + shadcn.
 8. Scripts `package.json`:
    - `dev: next dev`
    - `dev:lan: next dev -H 0.0.0.0`

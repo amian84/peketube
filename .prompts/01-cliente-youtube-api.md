@@ -28,7 +28,7 @@ Cliente para YouTube Data API v3 con **OAuth Bearer token del usuario** (Route H
 - **OQ-01-005:** **C** — `fetchJsonWithCache` devuelve datos stale + `stale` / `quotaExceeded` para banner en UI (prompt 03+).
 - **OQ-01-006:** **C con default ES + es** — `regionCode` / `relevanceLanguage` en settings y query a la API; por defecto `ES` y `es`.
 
-**Implementación:** aplicada en `kidstube/` según la resolución anterior.
+**Implementación:** aplicada en `peketube/` según la resolución anterior.
 
 ## Endpoints proxy (Route Handlers)
 

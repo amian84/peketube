@@ -10,7 +10,7 @@ Manifest, iconos adaptive, splash, theme color para que la PWA se instale en el 
 
 | ID | Question | Options | Notes |
 |----|----------|---------|-------|
-| OQ-09-001 | `name` y `short_name` del manifest | A) name="YouTube", short_name="YouTube" (riesgo legal alto si se distribuye) B) name="YouTube", short_name="KidsTube" C) name="MiTube", short_name="MiTube" | B disfraz visual + identificador interno distinto |
+| OQ-09-001 | `name` y `short_name` del manifest | A) name="YouTube", short_name="YouTube" (riesgo legal alto si se distribuye) B) name="YouTube", short_name="PekeTube" C) name="MiTube", short_name="MiTube" | B disfraz visual + identificador interno distinto |
 | OQ-09-002 | Color del icono | A) `#FF0000` puro YouTube (riesgo) B) `#E60000` ligeramente desplazado C) `#D32F2F` rojo Material | B disfraz convincente con diferencia detectable |
 | OQ-09-003 | Geometría del icono | A) Triángulo de play estándar B) Triángulo más estrecho + esquinas con radio diferente C) Símbolo distinto que el niño no note | B equilibrio |
 | OQ-09-004 | Splash screen iOS | A) Generar set vía script (`pwa-asset-generator`) B) Solo Android (Chrome) | A más completo |
@@ -20,7 +20,7 @@ Manifest, iconos adaptive, splash, theme color para que la PWA se instale en el 
 
 | ID | Decisión |
 |----|----------|
-| OQ-09-001 | **name** y **short_name** = `"KidsTube"`; icono PWA **muy parecido** a YouTube (no usar nombre "YouTube" en el manifest). |
+| OQ-09-001 | **name** y **short_name** = `"PekeTube"`; icono PWA **muy parecido** a YouTube (no usar nombre "YouTube" en el manifest). |
 | OQ-09-002 | **B** — `#E60000` |
 | OQ-09-003 | **B** — triángulo play más estrecho + radio de esquinas distinto |
 | OQ-09-004 | **A** — splash iOS + Android vía `pwa-asset-generator` |
@@ -35,7 +35,7 @@ Manifest, iconos adaptive, splash, theme color para que la PWA se instale en el 
    ```json
    {
      "name": "YouTube",
-     "short_name": "KidsTube",
+     "short_name": "PekeTube",
      "description": "Vídeos para niños",
      "start_url": "/",
      "scope": "/",

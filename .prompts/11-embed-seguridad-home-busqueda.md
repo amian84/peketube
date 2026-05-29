@@ -14,7 +14,7 @@ Unificar varios cambios de producto/técnica para **reducir salidas a youtube.co
 
 **Sí hay un desajuste de expectativas UX:**
 
-- En [`kidstube/src/lib/yt/home-chips.ts`](../kidstube/src/lib/yt/home-chips.ts) el chip etiquetado **«Todo»** usa **`categoryId: 24`** (Entertainment), **no** “todas las categorías permitidas”.
+- En [`peketube/src/lib/yt/home-chips.ts`](../peketube/src/lib/yt/home-chips.ts) el chip etiquetado **«Todo»** usa **`categoryId: 24`** (Entertainment), **no** “todas las categorías permitidas”.
 - Con **`strictKidsOnly`** activo (Dexie, default `true`), el servidor filtra a **`madeForKids === true`**. En **Trending por categoría** muchos vídeos populares **no** tienen `madeForKids=true` → la lista puede quedar **vacía o muy corta** para algunas categorías.
 
 **Tareas de producto en este prompt:**
@@ -25,11 +25,11 @@ Unificar varios cambios de producto/técnica para **reducir salidas a youtube.co
 
 ### 2) Búsqueda: scroll no carga más
 
-**Causa técnica:** [`kidstube/src/app/(main)/results/results-client.tsx`](../kidstube/src/app/(main)/results/results-client.tsx) solo usa `useSearch(q)` **sin** `pageToken` ni acumulación de páginas. `fetchSearchPage` en [`kidstube/src/lib/yt/client.ts`](../kidstube/src/lib/yt/client.ts) ya soporta `pageToken`; falta UI + estado (SWR infinito o botón “Cargar más” / `IntersectionObserver`).
+**Causa técnica:** [`peketube/src/app/(main)/results/results-client.tsx`](../peketube/src/app/(main)/results/results-client.tsx) solo usa `useSearch(q)` **sin** `pageToken` ni acumulación de páginas. `fetchSearchPage` en [`peketube/src/lib/yt/client.ts`](../peketube/src/lib/yt/client.ts) ya soporta `pageToken`; falta UI + estado (SWR infinito o botón “Cargar más” / `IntersectionObserver`).
 
 ### 3) Iframe: logo YouTube, enlace a YouTube, “más vídeos”
 
-El reproductor está en [`kidstube/src/components/player/youtube-player.tsx`](../kidstube/src/components/player/youtube-player.tsx) con IFrame API y `playerVars` (`modestbranding`, `rel`, etc.).
+El reproductor está en [`peketube/src/components/player/youtube-player.tsx`](../peketube/src/components/player/youtube-player.tsx) con IFrame API y `playerVars` (`modestbranding`, `rel`, etc.).
 
 **Limitación importante:** el reproductor embebido es **controlado por YouTube**. No hay parámetro documentado que **elimine por completo** el branding o todos los enlaces externos en todas las plataformas; hay que:
 
@@ -41,7 +41,7 @@ El reproductor está en [`kidstube/src/components/player/youtube-player.tsx`](..
 
 ### 4) Me gusta “real” en YouTube
 
-La API **`videos.rate`** requiere scope de **escritura** (no basta con `youtube.readonly`). Hoy [`kidstube/src/auth.ts`](../kidstube/src/auth.ts) solo pide `youtube.readonly`.
+La API **`videos.rate`** requiere scope de **escritura** (no basta con `youtube.readonly`). Hoy [`peketube/src/auth.ts`](../peketube/src/auth.ts) solo pide `youtube.readonly`.
 
 → Ver **OQ-11-002** (re-consentimiento Google + pantalla de consentimiento).
 
@@ -51,7 +51,7 @@ Generar URL absoluta de la app, p. ej. `{origin}/watch/{videoId}` (o con query s
 
 ### 6) Descripción: enlaces no clicables
 
-En [`kidstube/src/app/(main)/watch/[id]/watch-page-client.tsx`](../kidstube/src/app/(main)/watch/[id]/watch-page-client.tsx) la descripción es texto plano hoy; si en el futuro se renderiza HTML o autolink:
+En [`peketube/src/app/(main)/watch/[id]/watch-page-client.tsx`](../peketube/src/app/(main)/watch/[id]/watch-page-client.tsx) la descripción es texto plano hoy; si en el futuro se renderiza HTML o autolink:
 
 - Sanitizar / escapar HTML.
 - Quitar `href` o envolver con `pointer-events: none` + estilos, o mostrar URLs como texto sin `<a>`.
@@ -74,7 +74,14 @@ En [`kidstube/src/app/(main)/watch/[id]/watch-page-client.tsx`](../kidstube/src/
 | OQ-11-003 | Estrategia anti-salida desde iframe | A) Solo `playerVars` + `nocookie` B) A + overlay puntual en zonas del chrome (definir mockups) C) Aceptar límites y solo documentar | ToS / UX |
 | OQ-11-004 | Paginación búsqueda | A) Scroll infinito B) Botón “Cargar más” C) Ambos | Misma lógica reutilizable en Home si se desea |
 
-**Status:** `unresolved`
+**Status:** `resolved` (2026-05-19, interactivo)
+
+| ID | Decisión |
+|----|----------|
+| OQ-11-001 | **A** — Chip «Todo» → «Tendencias»; mensajes vacíos explícitos (`feed-empty-hint.ts`) |
+| OQ-11-002 | **B** — Me gusta solo local (Dexie `likedVideos`, v4) |
+| OQ-11-003 | **A** — Mantener endurecimiento actual; documentar en `peketube/docs/embed-limits.md` |
+| OQ-11-004 | **A** — Scroll infinito en búsqueda (ya implementado); pulir mensajes vacíos |
 
 **Assumptions if deferred:** —
 
@@ -84,7 +91,7 @@ En [`kidstube/src/app/(main)/watch/[id]/watch-page-client.tsx`](../kidstube/src/
 
 - Home: el usuario entiende por qué una categoría puede estar vacía; chip “Todo” no engaña (según OQ-11-001).
 - Búsqueda: con scroll (o acción explícita) se cargan más resultados mientras exista `nextPageToken`.
-- Watch: compartir copia URL **de KidsTube**; descripción sin navegación a URLs externas por clic.
+- Watch: compartir copia URL **de PekeTube**; descripción sin navegación a URLs externas por clic.
 - Watch: Me gusta llama API y refleja error/red de Google de forma legible (tras OQ-11-002).
 - Watch: menos superficie obvia para abrir youtube.com desde el embed (según OQ-11-003 y límites reales).
 - Tests donde aplique: helper de URL interna; sanitización de descripción; reducer de paginación de búsqueda (sin red).

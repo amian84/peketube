@@ -4,7 +4,7 @@
 
 ## Objetivo
 
-Centralizar en **el mismo fichero SQLite** que ya usa la blacklist (prompt **06**) también el **historial de visionado** que hoy vive solo en **IndexedDB/Dexie** (prompt **05**). El mismo fichero ya incluye **PIN parental** (`user_parental_pin`). Un solo almacén servidor por usuario (`user_id` = `sub` del JWT), variable `KIDSTUBE_SERVER_DB_PATH` o `BLACKLIST_DB_PATH` (prioridad documentada en `.env.example`).
+Centralizar en **el mismo fichero SQLite** que ya usa la blacklist (prompt **06**) también el **historial de visionado** que hoy vive solo en **IndexedDB/Dexie** (prompt **05**). El mismo fichero ya incluye **PIN parental** (`user_parental_pin`). Un solo almacén servidor por usuario (`user_id` = `sub` del JWT), variable `PEKETUBE_SERVER_DB_PATH` o `BLACKLIST_DB_PATH` (prioridad documentada en `.env.example`).
 
 ## Contexto / dependencias
 
@@ -19,12 +19,18 @@ Centralizar en **el mismo fichero SQLite** que ya usa la blacklist (prompt **06*
 | OQ-12-001 | Fuente de verdad tras la migración | A) Solo servidor (Dexie `watchHistory` eliminado o solo caché efímera) B) Escritura dual Dexie + servidor con reconciliación C) Servidor + Dexie como caché offline de solo lectura | A más simple; C mejor si PWA offline importa |
 | OQ-12-002 | Migración de datos existentes en Dexie | A) Una vez al primer `pull` tras login: volcar Dexie → servidor y vaciar/reemplazar local B) Export/import manual C) Sin migración automática | A mejor UX para usuarios actuales |
 | OQ-12-003 | Límite de filas de historial por usuario en SQLite | A) Mismo criterio que 05 (días + podar al listar) B) Cap duro adicional (p. ej. 2000 filas) C) Solo por días | A alinea con 05; B evita crecimiento descontrolado |
-| OQ-12-004 | API de historial | A) Rutas dedicadas `/api/watch-history` (GET lista, PATCH progreso, POST upsert, DELETE clear) B) Todo bajo `/api/kidstube-db` con acciones | A más claro para mantenimiento |
-| OQ-12-005 | Renombrar env y fichero | A) Mantener `BLACKLIST_DB_PATH` y nombre fichero actual B) Renombrar a `KIDSTUBE_SERVER_DB_PATH` + migración de doc/env | B más honesto semánticamente; implica actualizar 06 y `.env.example` |
+| OQ-12-004 | API de historial | A) Rutas dedicadas `/api/watch-history` (GET lista, PATCH progreso, POST upsert, DELETE clear) B) Todo bajo `/api/peketube-db` con acciones | A más claro para mantenimiento |
+| OQ-12-005 | Renombrar env y fichero | A) Mantener `BLACKLIST_DB_PATH` y nombre fichero actual B) Renombrar a `PEKETUBE_SERVER_DB_PATH` + migración de doc/env | B más honesto semánticamente; implica actualizar 06 y `.env.example` |
 
-**Status:** `unresolved`
+**Status:** `resolved` (2026-05-19)
 
-**Assumptions if deferred:** —
+| ID | Decision |
+|----|----------|
+| OQ-12-001 | **C** — Servidor autoritativo online; Dexie es caché de solo lectura offline (lecturas locales, escrituras solo vía API con sesión). |
+| OQ-12-002 | **Sin migración** — aún no hay producción con Dexie; no volcado automático Dexie→servidor. |
+| OQ-12-003 | **A** — Retención por `historyRetentionDays` (podar al listar/escribir en servidor). |
+| OQ-12-004 | **A** — `/api/watch-history` (GET, POST upsert, PATCH progreso, DELETE clear). |
+| OQ-12-005 | **B** — `PEKETUBE_SERVER_DB_PATH` principal; `BLACKLIST_DB_PATH` alias deprecado en `.env.example`. |
 
 > **Do not start implementation until open questions in this file are resolved or explicitly deferred with recorded assumptions.**
 
@@ -51,7 +57,7 @@ Centralizar en **el mismo fichero SQLite** que ya usa la blacklist (prompt **06*
 
 - `src/lib/db/history.ts` (o módulo nuevo): dejar de escribir solo Dexie **o** implementar capa que delegue en fetch según OQ-12-001.
 - `/watch` y `/you`: mismos contratos de UI que 05; cambia solo persistencia y sync.
-- `BlacklistProvider` o provider unificado (`KidstubeServerDataProvider`) si conviene un solo `pull` de snapshot blacklist + historial (opcional; no obligatorio si se mantiene explícito por pantalla).
+- `BlacklistProvider` o provider unificado (`PeketubeServerDataProvider`) si conviene un solo `pull` de snapshot blacklist + historial (opcional; no obligatorio si se mantiene explícito por pantalla).
 
 ## Criterios de aceptación
 

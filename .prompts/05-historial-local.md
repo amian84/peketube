@@ -26,7 +26,7 @@ Registrar localmente los vídeos vistos y mostrar la pantalla "Historial" dentro
 
 ## Schema Dexie
 
-`watchHistory` en versión 2 de IndexedDB (`kidstube/src/lib/db/schema.ts`). Tablas de blacklist en prompt 06.
+`watchHistory` en versión 2 de IndexedDB (`peketube/src/lib/db/schema.ts`). Tablas de blacklist en prompt 06.
 
 `WatchHistoryRow`: `{ videoId, title, channelId, channelTitle, thumbnailUrl, durationSec, watchedAt, progressSec }`.
 

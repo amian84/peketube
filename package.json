@@ -1,15 +1,15 @@
 {
-  "name": "kidstube-repo",
+  "name": "peketube-repo",
   "private": true,
   "packageManager": "pnpm@11.0.9",
   "scripts": {
-    "prepare": "pnpm install -C kidstube",
-    "dev": "pnpm -C kidstube dev",
-    "dev:lan": "pnpm -C kidstube dev:lan",
-    "build": "pnpm -C kidstube build",
-    "start": "pnpm -C kidstube start",
-    "lint": "pnpm -C kidstube lint",
-    "typecheck": "pnpm -C kidstube typecheck",
-    "install:app": "pnpm install -C kidstube"
+    "prepare": "pnpm install -C peketube",
+    "dev": "pnpm -C peketube dev",
+    "dev:lan": "pnpm -C peketube dev:lan",
+    "build": "pnpm -C peketube build",
+    "start": "pnpm -C peketube start",
+    "lint": "pnpm -C peketube lint",
+    "typecheck": "pnpm -C peketube typecheck",
+    "install:app": "pnpm install -C peketube"
   }
 }

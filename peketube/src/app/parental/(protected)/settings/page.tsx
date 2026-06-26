@@ -22,6 +22,19 @@ import {
   MIN_PARENTAL_SESSION_TTL_MS,
 } from "@/lib/parental/constants";
 import { PARENT_CATEGORY_OPTIONS } from "@/lib/yt/constants";
+import type { ThemeMode } from "@/lib/theme/resolve-theme";
+import {
+  THEME_AUTO_DARK_END_HOUR,
+  THEME_AUTO_DARK_START_HOUR,
+} from "@/lib/theme/resolve-theme";
+import {
+  MAX_PLAYER_SEEK_STEP_SEC,
+  MIN_PLAYER_SEEK_STEP_SEC,
+} from "@/lib/player/seek-step";
+import {
+  MAX_LOAD_TIMEOUT_SEC,
+  MIN_LOAD_TIMEOUT_SEC,
+} from "@/lib/loading/timeouts";
 
 const YOUTUBE_PARENT_CATEGORY_LABELS: Record<number, string> = {
   1: "Cine y animación",
@@ -200,6 +213,31 @@ export default function ParentalSettingsPage() {
       </section>
 
       <section className="space-y-2 rounded-lg border border-border p-4">
+        <h2 className="text-sm font-medium">Apariencia</h2>
+        <p className="text-xs text-muted-foreground">
+          En modo automático se usa tema claro de {THEME_AUTO_DARK_END_HOUR}:00 a{" "}
+          {THEME_AUTO_DARK_START_HOUR - 1}:59 y oscuro el resto del día (hora de
+          este dispositivo).
+        </p>
+        <label className="block text-xs text-muted-foreground">
+          Tema
+          <select
+            className="mt-1 w-full rounded border border-border bg-background px-2 py-2 text-sm"
+            value={s.themeMode}
+            onChange={async (e) => {
+              const v = e.target.value as ThemeMode;
+              const merged = await saveSettingsToDexie({ themeMode: v });
+              setS(merged);
+            }}
+          >
+            <option value="auto">Automático (según la hora)</option>
+            <option value="light">Claro</option>
+            <option value="dark">Oscuro</option>
+          </select>
+        </label>
+      </section>
+
+      <section className="space-y-2 rounded-lg border border-border p-4">
         <h2 className="text-sm font-medium">Solo contenido infantil (madeForKids)</h2>
         <label className="flex items-center gap-2 text-sm">
           <input
@@ -244,7 +282,7 @@ export default function ParentalSettingsPage() {
         />
       </section>
 
-      <section className="space-y-2 rounded-lg border border-border p-4">
+      <section className="space-y-3 rounded-lg border border-border p-4">
         <h2 className="text-sm font-medium">Reproductor</h2>
         <label className="flex items-center gap-2 text-sm">
           <input
@@ -257,21 +295,110 @@ export default function ParentalSettingsPage() {
               setS(merged);
             }}
           />
-          Autoplay siguiente vídeo
+          Reproducir el siguiente vídeo al terminar
         </label>
-        <label className="flex items-center gap-2 text-sm">
+        <label className="block text-sm">
+          <span className="text-muted-foreground">
+            Segundos al doble toque/clic en los lados ({MIN_PLAYER_SEEK_STEP_SEC}–
+            {MAX_PLAYER_SEEK_STEP_SEC})
+          </span>
           <input
-            type="checkbox"
-            checked={s.showVideoComments}
+            type="number"
+            min={MIN_PLAYER_SEEK_STEP_SEC}
+            max={MAX_PLAYER_SEEK_STEP_SEC}
+            className="mt-1 w-24 rounded border border-border bg-background px-2 py-1 text-sm"
+            value={s.playerSeekStepSec}
             onChange={async (e) => {
+              const n = Math.floor(Number(e.target.value));
+              if (
+                !Number.isFinite(n) ||
+                n < MIN_PLAYER_SEEK_STEP_SEC ||
+                n > MAX_PLAYER_SEEK_STEP_SEC
+              ) {
+                return;
+              }
               const merged = await saveSettingsToDexie({
-                showVideoComments: e.target.checked,
+                playerSeekStepSec: n,
               });
               setS(merged);
             }}
           />
-          Mostrar comentarios en /watch
         </label>
+        <p className="text-xs text-muted-foreground">
+          Doble clic o doble toque en el lado izquierdo o derecho del vídeo para
+          retroceder o avanzar.
+        </p>
+        <div className="space-y-1">
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={s.showVideoComments}
+              onChange={async (e) => {
+                const merged = await saveSettingsToDexie({
+                  showVideoComments: e.target.checked,
+                });
+                setS(merged);
+              }}
+            />
+            Mostrar comentarios en la página del vídeo
+          </label>
+          <p className="text-xs text-muted-foreground">
+            Desactivado por defecto. Los comentarios vienen de YouTube sin
+            filtrar: pueden incluir lenguaje inadecuado, spoilers o enlaces
+            externos. Actívalo solo si lo consideras apropiado para tu hijo.
+          </p>
+        </div>
+      </section>
+
+      <section className="space-y-3 rounded-lg border border-border p-4">
+        <h2 className="text-sm font-medium">Tiempos de carga (segundos)</h2>
+        <p className="text-xs text-muted-foreground">
+          Si se supera el tiempo, se muestra un mensaje con botón Reintentar
+          ({MIN_LOAD_TIMEOUT_SEC}–{MAX_LOAD_TIMEOUT_SEC} s).
+        </p>
+        {(
+          [
+            {
+              key: "feedBootstrapTimeoutSec" as const,
+              label: "Inicio — arranque (sesión y listas)",
+            },
+            {
+              key: "feedLoadTimeoutSec" as const,
+              label: "Inicio — petición del feed",
+            },
+            {
+              key: "watchMetaTimeoutSec" as const,
+              label: "Vídeo — metadatos (título, canal…)",
+            },
+            {
+              key: "playerReadyTimeoutSec" as const,
+              label: "Vídeo — reproductor listo",
+            },
+          ] as const
+        ).map(({ key, label }) => (
+          <label key={key} className="block text-sm">
+            <span className="text-muted-foreground">{label}</span>
+            <input
+              type="number"
+              min={MIN_LOAD_TIMEOUT_SEC}
+              max={MAX_LOAD_TIMEOUT_SEC}
+              className="mt-1 w-24 rounded border border-border bg-background px-2 py-1 text-sm"
+              value={s[key]}
+              onChange={async (e) => {
+                const n = Math.floor(Number(e.target.value));
+                if (
+                  !Number.isFinite(n) ||
+                  n < MIN_LOAD_TIMEOUT_SEC ||
+                  n > MAX_LOAD_TIMEOUT_SEC
+                ) {
+                  return;
+                }
+                const merged = await saveSettingsToDexie({ [key]: n });
+                setS(merged);
+              }}
+            />
+          </label>
+        ))}
       </section>
 
       <section className="space-y-2 rounded-lg border border-border p-4">
@@ -364,10 +491,11 @@ export default function ParentalSettingsPage() {
       <section className="space-y-2 rounded-lg border border-destructive/40 p-4">
         <h2 className="text-sm font-medium text-destructive">Zona peligrosa</h2>
         <p className="text-xs text-muted-foreground">
-          Llama al servidor para borrar PIN, bloqueos e historial en SQLite (misma
-          cuenta Google) y limpia en este dispositivo historial, caché de API y
-          listas locales; solo permanecen los ajustes del panel. Último recurso
-          si olvidaste el PIN y la frase (OQ-07-004 A).
+          Borra en el servidor (cuenta Google vinculada) el PIN parental, la
+          lista de bloqueos y el historial, y limpia en este dispositivo el
+          historial en caché y las listas locales. Se conservan los ajustes del
+          panel (categorías, reproductor, etc.). Último recurso si olvidaste el
+          PIN y la frase de recuperación.
         </p>
         <Button
           type="button"

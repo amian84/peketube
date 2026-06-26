@@ -9,6 +9,7 @@ import {
   aggregateFilteredVideos,
 } from "@/lib/yt/fill-filtered-page";
 import type { VideoDTO } from "@/lib/yt/types";
+import { MAIN_BOTTOM_PAD } from "@/lib/layout/responsive";
 
 /** OQ-03-003 C — búsqueda fija + duración corta (API). */
 const SHORTS_QUERY = "shorts infantiles";
@@ -54,7 +55,7 @@ export function ShortsFeed() {
   }, [snapshot, ready]);
 
   return (
-    <div className="px-3 pb-24 pt-2">
+    <div className={`px-3 pt-2 ${MAIN_BOTTOM_PAD}`}>
       <h1 className="mb-3 px-1 text-lg font-semibold">Shorts</h1>
       {loading ? (
         <p className="text-sm text-muted-foreground">Cargando…</p>

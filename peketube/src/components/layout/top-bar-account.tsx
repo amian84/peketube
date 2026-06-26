@@ -27,7 +27,7 @@ export function TopBarAccount() {
         href={`/sign-in?callbackUrl=${callbackUrl}`}
         className={cn(
           "flex h-8 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium",
-          "bg-[#272727] text-[#f1f1f1] ring-1 ring-[#3f3f3f] hover:bg-[#3f3f3f]",
+          "bg-[var(--yt-surface-elevated)] text-[var(--yt-text-primary)] ring-1 ring-[var(--yt-avatar-ring)] hover:bg-[var(--yt-surface-hover)]",
         )}
         aria-label="Iniciar sesión con Google"
       >

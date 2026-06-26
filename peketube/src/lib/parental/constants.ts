@@ -2,8 +2,8 @@
 export const PARENTAL_MAX_PIN_ATTEMPTS = 3;
 export const PARENTAL_COOLDOWN_MS = 5 * 60 * 1000;
 
-/** OQ-07-003 — default 5 min */
-export const DEFAULT_PARENTAL_SESSION_TTL_MS = 5 * 60 * 1000;
+/** OQ-07-003 — default 1 min */
+export const DEFAULT_PARENTAL_SESSION_TTL_MS = 60 * 1000;
 export const MIN_PARENTAL_SESSION_TTL_MS = 60 * 1000;
 export const MAX_PARENTAL_SESSION_TTL_MS = 60 * 60 * 1000;
 

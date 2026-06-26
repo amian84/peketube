@@ -218,6 +218,11 @@ Si Caddy corre fuera de TrueNAS, no hay red Docker común. Opciones:
 | `YOUTUBE_API_KEY` | sí (para invitado) | Cuota del proyecto para modo guest |
 | `PEKETUBE_SERVER_DB_PATH` | no | Default `/data/peketube.sqlite` en la imagen |
 | `BLACKLIST_DB_PATH` | no | Alias deprecado, solo si migras de versión vieja |
+| `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS` | no* | *Obligatorias para el formulario de contacto |
+| `CONTACT_TO_EMAIL` | no | Destino (default en código: `amiansito84@gmail.com`) |
+| `PEKETUBE_LOG_DIR` | no | Default `/data/logs` (junto al SQLite en Docker) |
+| `PEKETUBE_LOG_RETENTION_DAYS` | no | Default `7` |
+| `LOG_VIEWER_USER` / `LOG_VIEWER_PASS` | no* | *Obligatorias para abrir `/logs` (HTTP Basic Auth) |
 | `NODE_ENV` | recomendado | `production` |
 
 ---
@@ -262,4 +267,170 @@ solo se añadan tablas/columnas opcionales.
 | `redirect_uri_mismatch` de Google | URI no incluido en credenciales | Añadir `https://.../api/auth/callback/google` en Google Cloud |
 | `Error: Cannot find module 'better-sqlite3'` en runtime | Build sin toolchain o arch distinta | Reconstruir en mismo arch (TrueNAS = amd64); el Dockerfile ya lo cubre |
 | Historial no se ve entre dispositivos | Volumen no persistente o usuarios distintos | Verificar `/data/peketube.sqlite` y que `sub` Google sea el mismo |
+| Pide **Configurar PIN** cada vez que entras | SQLite en capa efímera del contenedor (sin volumen `/data`) | Montar dataset persistente → `/data` y `PEKETUBE_SERVER_DB_PATH=/data/peketube.sqlite`; comprobar que el fichero existe tras crear el PIN |
 | Caddy 502 | Red no compartida o nombre DNS incorrecto | `docker network connect` y usar `peketube` como host en `reverse_proxy` |
+
+---
+
+## 10. Landing pública (`peketubeinfo.amian.es`)
+
+La app incluye una landing informativa en la ruta interna `/info`, servida en la
+raíz del subdominio **`peketubeinfo.amian.es`** (mismo contenedor Docker).
+
+### 10.1 DNS en OVH
+
+En el panel DNS de `amian.es`:
+
+| Tipo | Subdominio | Destino |
+|------|------------|---------|
+| **CNAME** | `peketubeinfo` | `peketube.amian.es.` (si ya apunta al servidor) **o** |
+| **A** | `peketubeinfo` | Misma IP pública que `peketube` |
+
+Espera la propagación (minutos–horas). Comprueba: `dig peketubeinfo.amian.es`.
+
+### 10.2 Caddy
+
+Añade un bloque al Caddyfile (mismo `reverse_proxy` que la app):
+
+```caddy
+peketubeinfo.amian.es {
+    encode zstd gzip
+    header {
+        Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+    reverse_proxy peketube:3000 {
+        header_up Host {host}
+        header_up X-Forwarded-Proto {scheme}
+        header_up X-Forwarded-For   {remote_host}
+        flush_interval -1
+    }
+}
+```
+
+Recarga Caddy. El middleware detecta el host `peketubeinfo.amian.es` y sirve
+la landing; el botón **Ir a PekeTube** enlaza a `https://peketube.amian.es`.
+
+### 10.3 Variables opcionales
+
+En el `.env` del compose (si cambias dominios):
+
+```env
+PEKETUBE_INFO_HOST=peketubeinfo.amian.es
+NEXT_PUBLIC_PEKETUBE_APP_URL=https://peketube.amian.es
+```
+
+### 10.4 Probar en local
+
+- Landing: `http://localhost:3000/info`
+- Simular subdominio: añade en `/etc/hosts`  
+  `127.0.0.1 peketubeinfo.amian.es` y abre `http://peketubeinfo.amian.es:3000`
+
+Tras desplegar: copia `public/landing/` + `src/` y **rebuild** del contenedor.
+
+---
+
+## 11. Formulario de contacto (SMTP)
+
+La landing (`peketubeinfo.amian.es#contact`) y la página `/contact` envían correo
+vía **SMTP**. El destinatario (`CONTACT_TO_EMAIL`) no se muestra al usuario.
+
+Añade al `.env` del compose y reinicia el contenedor:
+
+```env
+CONTACT_TO_EMAIL=amiansito84@gmail.com
+SMTP_HOST=ssl0.ovh.net
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=contacto@amian.es
+SMTP_PASS=tu_contraseña
+CONTACT_FROM_EMAIL=peketube@amian.es
+```
+
+**OVH:** usa el servidor SMTP de tu dominio (`ssl0.ovh.net`, puerto 587 STARTTLS
+o 465 con `SMTP_SECURE=true`). El usuario suele ser la cuenta de correo completa.
+
+**Gmail como destino:** no hace falta configurar nada en Gmail; solo que el SMTP
+de envío pueda entregar a `amiansito84@gmail.com`.
+
+Si faltan `SMTP_HOST` / `SMTP_USER` / `SMTP_PASS`, el formulario responde **503**
+con mensaje de que el envío no está configurado.
+
+El formulario en la landing llama a `POST /api/contact` en el mismo host
+(`peketubeinfo.amian.es`); el middleware ya permite rutas `/api/*` en ese subdominio.
+
+---
+
+## 12. Logs rotativos y visor `/logs`
+
+Los `console.log` / `warn` / `error` del servidor y los logs del cliente
+(`[ParentalPin]`, `[HomeFeed]`, etc.) se escriben en ficheros diarios bajo
+`PEKETUBE_LOG_DIR` (por defecto `/data/logs/peketube-YYYY-MM-DD.log`).
+Los ficheros con más de **7 días** (configurable) se borran automáticamente.
+
+### 12.1 Variables
+
+```env
+PEKETUBE_LOG_DIR=/data/logs
+PEKETUBE_LOG_RETENTION_DAYS=7
+LOG_VIEWER_USER=admin
+LOG_VIEWER_PASS=una-contraseña-segura
+```
+
+Si faltan `LOG_VIEWER_USER` o `LOG_VIEWER_PASS`, la ruta `/logs` responde **404**
+(el visor desactivado).
+
+### 12.2 Acceso al visor
+
+1. Abre `https://peketube.tu-dominio.com/logs`
+2. El navegador pedirá usuario y contraseña (**HTTP Basic Auth**, equivalente a
+   `.htaccess` en Apache).
+3. Elige fecha, filtra por texto y pulsa **Actualizar**.
+
+Los logs del cliente se ingieren en `POST /api/logs/ingest` (mismo origen, sin
+Basic Auth). El visor y `GET /api/logs` sí exigen credenciales.
+
+### 12.3 Caddy (opcional, doble capa)
+
+Puedes añadir `basicauth` en Caddy además del de la app:
+
+```caddy
+peketube.tu-dominio.com {
+    @logs path /logs* /api/logs*
+    basicauth @logs {
+        admin JDJhJDEwJ...   # caddy hash-password
+    }
+    reverse_proxy peketube:3000
+}
+```
+
+No es obligatorio si ya usas `LOG_VIEWER_USER` / `LOG_VIEWER_PASS` en el contenedor.
+
+---
+
+## 13. Estadísticas de uso (`/stats`)
+
+Métricas en **SQLite** (mismas tablas que PIN/blacklist/historial):
+
+| Métrica | Origen |
+|---------|--------|
+| Usuarios Google registrados | Primer login OAuth (`stats_oauth_user`) |
+| Logins por día/mes y medias | `stats_login_event` |
+| Vídeos reproducidos | `stats_video_play` (al empezar reproducción) |
+| Tiempo de pantalla / sesión | `stats_app_session` (ping cada ~30 s en la PWA) |
+
+### 13.1 Acceso
+
+Mismas credenciales que `/logs`:
+
+```env
+LOG_VIEWER_USER=admin
+LOG_VIEWER_PASS=una-contraseña-segura
+```
+
+Abre `https://peketube.tu-dominio.com/stats` → HTTP Basic Auth → panel con
+totales, medias diarias/mensuales y desglose invitado vs cuenta Google.
+
+Los endpoints de ingesta (`POST /api/stats/session`, `POST /api/stats/video`)
+no exigen Basic Auth (mismo origen); el panel `GET /api/stats` sí.

@@ -394,7 +394,7 @@ export async function loadBlendedHomeScrollBatch(
   );
   let stale = related.stale;
   let quotaExceeded = related.quotaExceeded;
-  let historyVideos = related.videos;
+  const historyVideos = [...related.videos];
 
   if (historyVideos.length < historyMax) {
     const fill = await appendSearchFromHistory(

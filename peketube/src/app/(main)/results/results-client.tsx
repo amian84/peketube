@@ -15,6 +15,7 @@ import {
 } from "@/lib/yt/fill-filtered-page";
 import { trimVideoList } from "@/lib/yt/scroll-loop-trim";
 import { getFeedEmptyHint } from "@/lib/yt/feed-empty-hint";
+import { MAIN_BOTTOM_PAD, VIDEO_GRID_CLASS } from "@/lib/layout/responsive";
 import { usePeketubeSettings } from "@/hooks/use-peketube-settings";
 import type { VideoDTO } from "@/lib/yt/types";
 
@@ -216,7 +217,7 @@ export function ResultsClient() {
   }, [ready, hasQuery, tryLoadMore]);
 
   return (
-    <div className="px-1 pb-24 pt-2 sm:px-3">
+    <div className={`px-1 pt-2 sm:px-3 ${MAIN_BOTTOM_PAD}`}>
       <h1 className="mb-3 px-2 text-lg font-semibold">
         {hasQuery ? `Resultados: “${q}”` : "Buscar"}
       </h1>
@@ -238,7 +239,7 @@ export function ResultsClient() {
           Hasta {loopMaxItems} resultados desde YouTube (ajuste parental).
         </p>
       ) : null}
-      <div className="grid grid-cols-1 gap-0 sm:grid-cols-2 sm:gap-x-3 sm:gap-y-1">
+      <div className={VIDEO_GRID_CLASS}>
         {items.map((v) => (
           <VideoCard key={v.id} video={v} />
         ))}

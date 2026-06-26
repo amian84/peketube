@@ -13,17 +13,17 @@ type Props = {
 export function PlayerEndOverlay({ videos, onReplay }: Props) {
   return (
     <div
-      className="absolute inset-0 z-20 flex flex-col bg-[#0f0f0f]/98 p-4 backdrop-blur-sm"
+      className="absolute inset-0 z-20 flex flex-col bg-[var(--yt-app-bg)]/98 p-4 backdrop-blur-sm"
       role="dialog"
       aria-label="Siguientes en PekeTube"
     >
-      <p className="mb-3 text-sm font-semibold text-white">Siguiente en PekeTube</p>
+      <p className="mb-3 text-sm font-semibold text-[var(--yt-text-primary)]">Siguiente en PekeTube</p>
       <ul className="min-h-0 flex-1 space-y-2 overflow-y-auto">
         {videos.slice(0, 6).map((v) => (
           <li key={v.id}>
             <Link
               href={`/watch/${encodeURIComponent(v.id)}`}
-              className="flex gap-3 rounded-lg bg-[#272727] p-2 hover:bg-[#3f3f3f]"
+              className="flex gap-3 rounded-lg bg-[var(--yt-surface-elevated)] p-2 hover:bg-[var(--yt-surface-hover)]"
             >
               {v.thumbnailUrl ? (
                 <Image
@@ -36,7 +36,7 @@ export function PlayerEndOverlay({ videos, onReplay }: Props) {
               ) : (
                 <div className="h-[68px] w-[120px] shrink-0 rounded bg-muted" />
               )}
-              <span className="line-clamp-2 text-sm text-white">{v.title}</span>
+              <span className="line-clamp-2 text-sm text-[var(--yt-text-primary)]">{v.title}</span>
             </Link>
           </li>
         ))}
@@ -45,7 +45,7 @@ export function PlayerEndOverlay({ videos, onReplay }: Props) {
         <button
           type="button"
           onClick={onReplay}
-          className="mt-3 shrink-0 rounded-lg border border-[#3f3f3f] px-4 py-2 text-sm text-[#f1f1f1] hover:bg-[#272727]"
+          className="mt-3 shrink-0 rounded-lg border border-[var(--yt-avatar-ring)] px-4 py-2 text-sm text-[var(--yt-text-primary)] hover:bg-[var(--yt-surface-elevated)]"
         >
           Ver de nuevo
         </button>

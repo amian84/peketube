@@ -34,6 +34,7 @@ ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 # Ruta por defecto del SQLite servidor; el volumen monta /data del host.
 ENV PEKETUBE_SERVER_DB_PATH=/data/peketube.sqlite
+ENV PEKETUBE_LOG_DIR=/data/logs
 
 RUN addgroup --system --gid 1001 nodejs \
  && adduser  --system --uid 1001 nextjs \
@@ -45,6 +46,17 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static    ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public           ./public
 
+# sharp: instalar en /tmp (npm falla si mezcla con el node_modules traced de pnpm/standalone).
+USER root
+RUN apk add --no-cache libc6-compat \
+ && mkdir -p /tmp/sharp-install /app/node_modules \
+ && cd /tmp/sharp-install \
+ && npm init -y >/dev/null 2>&1 \
+ && npm install --omit=dev sharp@0.33.5 \
+ && cp -r node_modules/sharp /app/node_modules/sharp \
+ && if [ -d node_modules/@img ]; then cp -r node_modules/@img /app/node_modules/@img; fi \
+ && chown -R nextjs:nodejs /app/node_modules \
+ && rm -rf /tmp/sharp-install
 USER nextjs
 EXPOSE 3000
 VOLUME ["/data"]

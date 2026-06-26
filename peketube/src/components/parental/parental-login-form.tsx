@@ -1,6 +1,6 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { getSession, useSession } from "next-auth/react";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -10,20 +10,25 @@ import {
   recordPinFailure,
   remainingCooldownMs,
 } from "@/lib/parental/attempts";
-import { hasPin, verifyPin } from "@/lib/parental/pin";
+import {
+  hasPinWithRetry,
+  isParentalAuthError,
+  verifyPin,
+} from "@/lib/parental/pin";
 import {
   isParentalSessionUnlocked,
   unlockParentalSession,
 } from "@/lib/parental/session";
+import { devClientLog } from "@/lib/dev/client-log";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export function ParentalLoginForm() {
   const router = useRouter();
   const { status } = useSession();
-  const [pin, setPin] = useState("");
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(true);
+  const [redirecting, setRedirecting] = useState(false);
   const [cooldownLeft, setCooldownLeft] = useState(0);
   const [fetchErr, setFetchErr] = useState("");
 
@@ -35,19 +40,41 @@ export function ParentalLoginForm() {
     }
     let alive = true;
     void (async () => {
+      let willRedirect = false;
       try {
-        if (!(await hasPin())) {
+        if (!(await hasPinWithRetry(getSession, { recheckIfFalse: true }))) {
+          devClientLog("[ParentalPin]", {
+            event: "redirect-setup",
+            from: "login",
+            reason: "hasPin-false-after-recheck",
+          });
+          willRedirect = true;
+          if (alive) setRedirecting(true);
           router.replace("/parental/setup");
           return;
         }
-        if (isParentalSessionUnlocked()) {
+        const sess = await getSession();
+        const uid =
+          typeof sess?.user?.id === "string" && sess.user.id.length > 0
+            ? sess.user.id
+            : null;
+        if (uid && isParentalSessionUnlocked(uid)) {
+          willRedirect = true;
+          if (alive) setRedirecting(true);
           router.replace("/parental");
           return;
         }
-      } catch {
-        if (alive) setFetchErr("No se pudo cargar el estado del PIN.");
+      } catch (e) {
+        if (!alive) return;
+        if (isParentalAuthError(e)) {
+          setFetchErr(
+            "La sesión aún no está lista. Espera un momento y reintenta.",
+          );
+        } else {
+          setFetchErr("No se pudo cargar el estado del PIN.");
+        }
       } finally {
-        if (alive) setLoading(false);
+        if (alive && !willRedirect) setLoading(false);
       }
     })();
     return () => {
@@ -89,13 +116,26 @@ export function ParentalLoginForm() {
         return;
       }
       clearPinAttempts();
-      await unlockParentalSession();
+      const sess = await getSession();
+      const uid =
+        typeof sess?.user?.id === "string" && sess.user.id.length > 0
+          ? sess.user.id
+          : null;
+      if (!uid) {
+        setErr("Sesión caducada. Vuelve a iniciar sesión con Google.");
+        return;
+      }
+      await unlockParentalSession(uid);
       router.push("/parental");
     },
     [pin, router, cooldownLeft],
   );
 
-  if (status === "loading" || (status === "authenticated" && loading)) {
+  if (
+    status === "loading" ||
+    redirecting ||
+    (status === "authenticated" && loading)
+  ) {
     return (
       <p className="text-center text-sm text-muted-foreground">Cargando…</p>
     );

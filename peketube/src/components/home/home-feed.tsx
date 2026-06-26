@@ -8,6 +8,9 @@ import {
   withYouTubeAuthRetry,
 } from "@/lib/yt/await-youtube-session";
 import { GuestQuotaBanner } from "@/components/yt/guest-quota-banner";
+import { FeedLoadError } from "@/components/home/feed-load-error";
+import { HomeFeedSkeleton } from "@/components/video/video-card-skeleton";
+import { MAIN_BOTTOM_PAD, VIDEO_GRID_CLASS } from "@/lib/layout/responsive";
 import {
   isGuestQuotaError,
   isGuestUnavailableError,
@@ -58,6 +61,12 @@ import {
   trimPopularPlusTail,
 } from "@/lib/yt/scroll-loop-trim";
 import { homeFeedCounts, logHomeFeed } from "@/lib/dev/home-feed-debug";
+import {
+  FeedLoadTimeoutError,
+  HOME_FEED_TIMEOUT_MESSAGE,
+  withFeedLoadTimeout,
+} from "@/lib/yt/feed-loading";
+import { secToMs } from "@/lib/loading/timeouts";
 import type { VideoDTO } from "@/lib/yt/types";
 
 export function HomeFeed() {
@@ -74,6 +83,8 @@ export function HomeFeed() {
     useState<HomeFeedSearchCursor | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [timedOut, setTimedOut] = useState(false);
+  const [reloadNonce, setReloadNonce] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
   const [quotaExceeded, setQuotaExceeded] = useState(false);
@@ -216,7 +227,7 @@ export function HomeFeed() {
   }, [loadingMore, scrollItems, popularItems, historyTail]);
 
   const emptyHint = useMemo(() => {
-    if (loading || error || allItems.length > 0) return null;
+    if (loading || error || timedOut || allItems.length > 0) return null;
     return getFeedEmptyHint({
       categoryLabel: homeChipLabel(chipId),
       strictKidsOnly: settings.strictKidsOnly,
@@ -226,6 +237,7 @@ export function HomeFeed() {
   }, [
     loading,
     error,
+    timedOut,
     allItems.length,
     chipId,
     settings.strictKidsOnly,
@@ -244,6 +256,32 @@ export function HomeFeed() {
     window.addEventListener("peketube-settings-changed", sync);
     return () => window.removeEventListener("peketube-settings-changed", sync);
   }, []);
+
+  const retryInitialLoad = useCallback(() => {
+    loadGenRef.current += 1;
+    setTimedOut(false);
+    setError(null);
+    setLoadMoreError(null);
+    setGuestQuotaExceeded(false);
+    setPopularItems([]);
+    setHistoryTail([]);
+    setScrollItems([]);
+    setFeedSearchCursor(null);
+    setLoading(true);
+    setReloadNonce((n) => n + 1);
+  }, []);
+
+  /** Si sesión o blacklist tardan demasiado, no dejar la pantalla en blanco. */
+  useEffect(() => {
+    if (ready && ytReady) return;
+    const id = window.setTimeout(() => {
+      setTimedOut(true);
+      setLoading(false);
+      setError((prev) => prev ?? HOME_FEED_TIMEOUT_MESSAGE);
+      loadGenRef.current += 1;
+    }, secToMs(settings.feedBootstrapTimeoutSec));
+    return () => window.clearTimeout(id);
+  }, [ready, ytReady, reloadNonce, chipId, settings.feedBootstrapTimeoutSec]);
 
   useEffect(() => {
     if (loading) return;
@@ -277,6 +315,7 @@ export function HomeFeed() {
 
     (async () => {
       setLoading(true);
+      setTimedOut(false);
       setLoadingMore(false);
       setError(null);
       setLoadMoreError(null);
@@ -296,7 +335,10 @@ export function HomeFeed() {
         setLoopMaxItems(st.scrollLoopMaxItems);
 
         if (authReady) {
-          const sessionOk = await ensureYouTubeSessionReady();
+          const sessionOk = await withFeedLoadTimeout(
+            ensureYouTubeSessionReady(),
+            secToMs(settings.feedLoadTimeoutSec),
+          );
           if (isStale()) return;
           if (!sessionOk.ok) {
             const local = await listHistoryAsVideos(
@@ -324,8 +366,14 @@ export function HomeFeed() {
         const loadFeed = () =>
           loadHomeFeedWithHistorySimilar(chipId, st.regionCode, snapshot);
         const r = authReady
-          ? await withYouTubeAuthRetry(loadFeed)
-          : await loadFeed();
+          ? await withFeedLoadTimeout(
+              withYouTubeAuthRetry(loadFeed),
+              secToMs(settings.feedLoadTimeoutSec),
+            )
+          : await withFeedLoadTimeout(
+              loadFeed(),
+              secToMs(settings.feedLoadTimeoutSec),
+            );
         if (isStale()) return;
 
         const trimmed = trimPopularPlusTail(
@@ -352,6 +400,7 @@ export function HomeFeed() {
         setFeedSearchCursor(r.feedSearchCursor);
         hasHistoryRowsRef.current = r.hasHistoryRows;
         setQuotaExceeded(!!r.quotaExceeded);
+        setTimedOut(false);
         logHomeFeed("initial-load", {
           ...homeFeedCounts(
             trimmed.popular.length,
@@ -365,6 +414,15 @@ export function HomeFeed() {
         });
       } catch (e) {
         if (isStale()) return;
+        if (e instanceof FeedLoadTimeoutError) {
+          setTimedOut(true);
+          setError(HOME_FEED_TIMEOUT_MESSAGE);
+          setPopularItems([]);
+          setHistoryTail([]);
+          setScrollItems([]);
+          setFeedSearchCursor(null);
+          return;
+        }
         if (isGuestQuotaError(e)) {
           setGuestQuotaExceeded(true);
           setError(null);
@@ -409,7 +467,17 @@ export function HomeFeed() {
     return () => {
       cancelled = true;
     };
-  }, [chipId, snapshot, ready, authReady, ytReady, authStatus, saveLoopSnapshot]);
+  }, [
+    chipId,
+    snapshot,
+    ready,
+    authReady,
+    ytReady,
+    authStatus,
+    saveLoopSnapshot,
+    reloadNonce,
+    settings.feedLoadTimeoutSec,
+  ]);
 
   /** Similares del historial; si no aportan, búsqueda por canal/título guardado. */
   const loadHistorySupplement = useCallback(
@@ -867,6 +935,15 @@ export function HomeFeed() {
     return () => obs.disconnect();
   }, [ready, ytReady, guestQuotaExceeded, loading, tryLoadMore]);
 
+  const isInitialPending =
+    !timedOut &&
+    allItems.length === 0 &&
+    (loading || authStatus === "loading" || !ready);
+
+  const showFatalLoadError =
+    allItems.length === 0 &&
+    (timedOut || (!!error && !isInitialPending && !guestQuotaExceeded));
+
   return (
     <>
       <CategoryChips
@@ -874,25 +951,29 @@ export function HomeFeed() {
         selectedId={chipId}
         onSelect={setChipId}
       />
-      <div className="px-1 pb-24 pt-1 sm:px-3">
+      <div className={`px-1 pt-1 sm:px-3 ${MAIN_BOTTOM_PAD}`}>
         {isGuest && !guestQuotaExceeded && !loading ? (
-          <p className="mx-2 mb-2 rounded-md bg-[#272727] px-3 py-2 text-xs text-[#aaa]">
+          <p className="mx-2 mb-2 rounded-md bg-[var(--yt-surface-elevated)] px-3 py-2 text-xs text-[var(--yt-text-secondary)]">
             Modo invitado — conecta Google para suscripciones y tu cuota propia.
           </p>
         ) : null}
         {guestQuotaExceeded ? <GuestQuotaBanner /> : null}
-        {loading || authStatus === "loading" ? (
-          <p className="px-2 py-4 text-sm text-muted-foreground">Cargando…</p>
+        {isInitialPending ? <HomeFeedSkeleton /> : null}
+        {showFatalLoadError ? (
+          <FeedLoadError
+            message={error ?? HOME_FEED_TIMEOUT_MESSAGE}
+            onRetry={retryInitialLoad}
+          />
         ) : null}
-        {error ? (
-          <p className="px-2 py-4 text-sm text-destructive">{error}</p>
+        {error && allItems.length > 0 ? (
+          <p className="px-2 py-2 text-sm text-destructive">{error}</p>
         ) : null}
         {quotaExceeded && !guestQuotaExceeded ? (
           <p className="px-2 py-2 text-sm text-amber-500">
             Cuota de YouTube agotada; mostrando caché si existe.
           </p>
         ) : null}
-        <div className="grid grid-cols-1 gap-0 sm:grid-cols-2 sm:gap-x-3 sm:gap-y-1">
+        <div className={VIDEO_GRID_CLASS}>
           {allItems.map((v, i) => (
             <VideoCard
               key={`${v.id}-${v.loopPass ?? 0}-${i}`}
@@ -902,9 +983,9 @@ export function HomeFeed() {
         </div>
         <div ref={sentinelRef} className="h-1 w-full shrink-0" aria-hidden />
         {loadingMore ? (
-          <p className="px-2 py-3 text-center text-sm text-muted-foreground">
-            Cargando más…
-          </p>
+          <div className="pt-2">
+            <HomeFeedSkeleton count={2} showSpinner />
+          </div>
         ) : null}
         {loadMoreError ? (
           <p className="px-2 py-2 text-center text-xs text-destructive">

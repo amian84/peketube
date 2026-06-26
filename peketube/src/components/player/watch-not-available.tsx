@@ -6,7 +6,7 @@ export function WatchNotAvailable({ reason }: { reason?: string }) {
       <h1 className="text-lg font-semibold">No disponible</h1>
       <p className="max-w-sm text-sm text-muted-foreground">
         {reason ??
-          "Este vídeo no está disponible en modo solo contenido infantil (OQ-04-005)."}
+          "Este vídeo no está disponible con el filtro de solo contenido infantil activado."}
       </p>
       <Link
         href="/"

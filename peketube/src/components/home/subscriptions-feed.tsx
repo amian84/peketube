@@ -9,6 +9,7 @@ import { ChannelRow } from "@/components/video/channel-row";
 import { useBlacklist } from "@/components/providers/blacklist-provider";
 import { fetchSubscriptionsPage, isYouTubeAuthError } from "@/lib/yt/client";
 import type { SubscriptionListItem } from "@/lib/yt/client";
+import { MAIN_BOTTOM_PAD } from "@/lib/layout/responsive";
 import {
   DEFAULT_SUBSCRIPTIONS_DESIRED,
   aggregateFilteredSubscriptionChannels,
@@ -60,7 +61,7 @@ export function SubscriptionsFeed() {
 
   if (needsSignIn) {
     return (
-      <div className="px-3 pb-24 pt-2">
+      <div className={`px-3 pt-2 ${MAIN_BOTTOM_PAD}`}>
         <h1 className="mb-2 px-1 text-lg font-semibold">Suscripciones</h1>
         <p className="mb-4 px-1 text-sm text-muted-foreground">
           Para ver tus canales suscritos necesitas conectar tu cuenta de Google.
@@ -76,7 +77,7 @@ export function SubscriptionsFeed() {
   }
 
   return (
-    <div className="px-3 pb-24 pt-2">
+    <div className={`px-3 pt-2 ${MAIN_BOTTOM_PAD}`}>
       <h1 className="mb-2 px-1 text-lg font-semibold">Suscripciones</h1>
       {loading ? (
         <p className="text-sm text-muted-foreground">Cargando…</p>

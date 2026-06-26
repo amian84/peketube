@@ -5,9 +5,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronUp, Share2, ThumbsUp } from "lucide-react";
 import { RelatedList } from "@/components/player/related-list";
+import { RelatedSidebar } from "@/components/player/related-sidebar";
 import { VideoCommentsPanel } from "@/components/player/video-comments-panel";
 import { WatchNotAvailable } from "@/components/player/watch-not-available";
 import { PlayerEndOverlay } from "@/components/player/player-end-overlay";
+import { FeedLoadError } from "@/components/home/feed-load-error";
 import { YouTubePlayer } from "@/components/player/youtube-player";
 import { BlockSheet } from "@/components/player/block-sheet";
 import { Button } from "@/components/ui/button";
@@ -24,6 +26,9 @@ import {
   formatViewCount,
 } from "@/lib/yt/format-display";
 import { useRelated, useVideo, useVideoComments } from "@/lib/yt/swr";
+import { MAIN_BOTTOM_PAD } from "@/lib/layout/responsive";
+import { LOAD_TIMEOUT_MESSAGE, secToMs } from "@/lib/loading/timeouts";
+import { reportVideoPlayStat } from "@/lib/stats/client";
 
 /** Tras confirmar PIN (prompt 08). */
 type PendingBlock =
@@ -41,8 +46,9 @@ type WatchPageClientProps = {
 export function WatchPageClient({ videoId }: WatchPageClientProps) {
   const router = useRouter();
   const settings = usePeketubeSettings();
-  const { data, error, isLoading } = useVideo(videoId);
+  const { data, error, isLoading, mutate } = useVideo(videoId);
   const video = data?.data;
+  const [metaTimedOut, setMetaTimedOut] = useState(false);
 
   const {
     snapshot,
@@ -99,10 +105,27 @@ export function WatchPageClient({ videoId }: WatchPageClientProps) {
   );
 
   useEffect(() => {
+    setMetaTimedOut(false);
+  }, [videoId]);
+
+  useEffect(() => {
+    if (!isLoading || video) return;
+    const id = window.setTimeout(() => {
+      setMetaTimedOut(true);
+    }, secToMs(settings.watchMetaTimeoutSec));
+    return () => window.clearTimeout(id);
+  }, [isLoading, video, videoId, settings.watchMetaTimeoutSec]);
+
+  useEffect(() => {
     if (!toastMsg) return;
     const id = window.setTimeout(() => setToastMsg(null), 2400);
     return () => window.clearTimeout(id);
   }, [toastMsg]);
+
+  const retryMetaLoad = useCallback(() => {
+    setMetaTimedOut(false);
+    void mutate();
+  }, [mutate]);
 
   const handlePinOpenChange = useCallback((v: boolean) => {
     setPinOpen(v);
@@ -183,6 +206,7 @@ export function WatchPageClient({ videoId }: WatchPageClientProps) {
       if (settings.historyRecordMode !== "on_play") return;
       if (state !== PS_PLAYING || hasRecordedRef.current) return;
       hasRecordedRef.current = true;
+      reportVideoPlayStat(video.id, Math.floor(lastSecRef.current));
       void recordWatch(video, Math.floor(lastSecRef.current));
     },
     [video, settings.historyRecordMode],
@@ -227,18 +251,39 @@ export function WatchPageClient({ videoId }: WatchPageClientProps) {
 
   const commentItems = comments.data?.data?.items ?? [];
 
+  if (metaTimedOut && !video) {
+    return (
+      <main className={`px-2 pt-2 sm:px-3 ${MAIN_BOTTOM_PAD}`}>
+        <div className="aspect-video w-full overflow-hidden rounded-lg bg-black">
+          <div className="flex h-full items-center justify-center p-4">
+            <FeedLoadError
+              message={LOAD_TIMEOUT_MESSAGE}
+              onRetry={retryMetaLoad}
+            />
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   if (isLoading && !video) {
     return (
-      <main className="px-2 pb-24 pt-2 sm:px-3">
-        <div className="aspect-video w-full animate-pulse rounded-lg bg-muted" />
-        <p className="mt-4 text-sm text-muted-foreground">Cargando vídeo…</p>
+      <main className={`px-2 pt-2 sm:px-3 ${MAIN_BOTTOM_PAD}`}>
+        <div className="aspect-video w-full animate-pulse rounded-lg bg-[var(--yt-surface-elevated)]" />
+        <div className="mt-4 flex justify-center">
+          <div
+            className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--yt-border)] border-t-[#E62117]"
+            role="status"
+            aria-label="Cargando vídeo"
+          />
+        </div>
       </main>
     );
   }
 
   if (error || !video) {
     return (
-      <main className="flex min-h-[50vh] flex-col items-center justify-center gap-4 px-4 pb-24">
+      <main className={`flex min-h-[50vh] flex-col items-center justify-center gap-4 px-4 ${MAIN_BOTTOM_PAD}`}>
         <p className="text-sm text-destructive">No se pudo cargar el vídeo.</p>
         <Link
           href="/"
@@ -264,125 +309,137 @@ export function WatchPageClient({ videoId }: WatchPageClientProps) {
   const when = formatPublishedRelative(video.publishedAt);
 
   return (
-    <main className="pb-24">
-      <div className="relative">
-        <YouTubePlayer
-          key={`${video.id}-${playerKey}`}
-          videoId={video.id}
-          onEnded={handleEnded}
-          onStateChange={handleStateChange}
-          onProgress={handleProgress}
-          onEmbedError={handleEmbedError}
-        />
-        {playerEnded ? (
-          relatedVideosFiltered.length > 0 ? (
-            <PlayerEndOverlay
-              videos={relatedVideosFiltered}
-              onReplay={() => {
-                setPlayerEnded(false);
-                setPlayerKey((k) => k + 1);
-              }}
+    <main className={MAIN_BOTTOM_PAD}>
+      <div className="lg:flex lg:items-start lg:gap-6 lg:px-4 lg:pt-2">
+        <div className="min-w-0 flex-1">
+          <div className="relative lg:max-w-[1280px]">
+            <YouTubePlayer
+              key={`${video.id}-${playerKey}`}
+              videoId={video.id}
+              seekStepSec={settings.playerSeekStepSec}
+              readyTimeoutSec={settings.playerReadyTimeoutSec}
+              onEnded={handleEnded}
+              onStateChange={handleStateChange}
+              onProgress={handleProgress}
+              onEmbedError={handleEmbedError}
             />
-          ) : (
-            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-[#0f0f0f]/98 p-4">
-              <p className="text-sm font-medium text-white">Fin del vídeo</p>
+            {playerEnded ? (
+              relatedVideosFiltered.length > 0 ? (
+                <PlayerEndOverlay
+                  videos={relatedVideosFiltered}
+                  onReplay={() => {
+                    setPlayerEnded(false);
+                    setPlayerKey((k) => k + 1);
+                  }}
+                />
+              ) : (
+                <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-[var(--yt-app-bg)]/98 p-4">
+                  <p className="text-sm font-medium text-foreground">
+                    Fin del vídeo
+                  </p>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => {
+                      setPlayerEnded(false);
+                      setPlayerKey((k) => k + 1);
+                    }}
+                  >
+                    Ver de nuevo
+                  </Button>
+                  <Link
+                    href="/"
+                    className="text-sm text-primary underline-offset-2 hover:underline"
+                  >
+                    Volver al inicio
+                  </Link>
+                </div>
+              )
+            ) : null}
+          </div>
+
+          <div className="px-3 py-3 sm:px-4 lg:px-0">
+            <h1 className="text-base font-semibold leading-snug sm:text-lg">
+              {video.title}
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {video.channelTitle}
+              {views ? ` · ${views}` : ""}
+              {when ? ` · ${when}` : ""}
+            </p>
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant={liked ? "default" : "secondary"}
+                size="sm"
+                title="Guardado solo en este dispositivo (no en YouTube)"
+                onClick={() => {
+                  void toggleVideoLike(videoId).then(setLiked);
+                }}
+              >
+                <ThumbsUp
+                  className={`mr-1 h-4 w-4 ${liked ? "fill-current" : ""}`}
+                />
+                Me gusta
+              </Button>
               <Button
                 type="button"
                 variant="secondary"
-                onClick={() => {
-                  setPlayerEnded(false);
-                  setPlayerKey((k) => k + 1);
-                }}
+                size="sm"
+                onClick={() => void copyPekeTubeLink()}
               >
-                Ver de nuevo
+                <Share2 className="mr-1 h-4 w-4" />
+                Compartir enlace
               </Button>
-              <Link
-                href="/"
-                className="text-sm text-primary underline-offset-2 hover:underline"
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setSheetOpen(true)}
               >
-                Volver al inicio
-              </Link>
+                Bloquear
+              </Button>
             </div>
-          )
-        ) : null}
-      </div>
 
-      <div className="px-3 py-3 sm:px-4">
-        <h1 className="text-base font-semibold leading-snug sm:text-lg">
-          {video.title}
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {video.channelTitle}
-          {views ? ` · ${views}` : ""}
-          {when ? ` · ${when}` : ""}
-        </p>
-
-        <div className="mt-3 flex flex-wrap gap-2">
-          <Button
-            type="button"
-            variant={liked ? "default" : "secondary"}
-            size="sm"
-            title="Guardado solo en este dispositivo (no en YouTube)"
-            onClick={() => {
-              void toggleVideoLike(videoId).then(setLiked);
-            }}
-          >
-            <ThumbsUp
-              className={`mr-1 h-4 w-4 ${liked ? "fill-current" : ""}`}
-            />
-            Me gusta
-          </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={() => void copyPekeTubeLink()}
-          >
-            <Share2 className="mr-1 h-4 w-4" />
-            Compartir enlace
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setSheetOpen(true)}
-          >
-            Bloquear
-          </Button>
-        </div>
-
-        {descriptionPlain ? (
-          <div className="mt-4 rounded-lg bg-muted/40 p-3">
-            <button
-              type="button"
-              className="flex w-full items-center justify-between text-left text-sm font-medium"
-              onClick={() => setDescOpen((o) => !o)}
-            >
-              Descripción
-              {descOpen ? (
-                <ChevronUp className="h-4 w-4 shrink-0" />
-              ) : (
-                <ChevronDown className="h-4 w-4 shrink-0" />
-              )}
-            </button>
-            {descOpen ? (
-              <p className="mt-2 whitespace-pre-wrap break-words text-sm text-muted-foreground">
-                {descriptionPlain}
-              </p>
+            {descriptionPlain ? (
+              <div className="mt-4 rounded-lg bg-muted/40 p-3">
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between text-left text-sm font-medium"
+                  onClick={() => setDescOpen((o) => !o)}
+                >
+                  Descripción
+                  {descOpen ? (
+                    <ChevronUp className="h-4 w-4 shrink-0" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 shrink-0" />
+                  )}
+                </button>
+                {descOpen ? (
+                  <p className="mt-2 whitespace-pre-wrap break-words text-sm text-muted-foreground">
+                    {descriptionPlain}
+                  </p>
+                ) : null}
+              </div>
             ) : null}
           </div>
-        ) : null}
+
+          <div className="lg:hidden">
+            <RelatedList videos={relatedVideosFiltered} />
+          </div>
+
+          {commentsEnabled ? (
+            <VideoCommentsPanel
+              items={commentItems}
+              loading={comments.isLoading}
+              error={!!comments.error}
+            />
+          ) : null}
+        </div>
+
+        <RelatedSidebar videos={relatedVideosFiltered} />
       </div>
-
-      <RelatedList videos={relatedVideosFiltered} />
-
-      {commentsEnabled ? (
-        <VideoCommentsPanel
-          items={commentItems}
-          loading={comments.isLoading}
-          error={!!comments.error}
-        />
-      ) : null}
 
       {toastMsg ? (
         <div

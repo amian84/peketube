@@ -6,6 +6,12 @@ export const HOME_LOOP_SNAPSHOT_SIZE = 16;
 
 export type HomeFeedScrollItem = VideoDTO & { loopPass?: number };
 
+function asPoolVideo(v: VideoDTO | HomeFeedScrollItem): VideoDTO {
+  const { loopPass, ...base } = v as HomeFeedScrollItem;
+  void loopPass;
+  return base;
+}
+
 export function toHomeDisplayItems(
   popular: VideoDTO[],
   history: VideoDTO[],
@@ -32,8 +38,7 @@ export function buildLoopPool(
   for (const v of [...popular, ...history, ...scroll]) {
     if (seen.has(v.id)) continue;
     seen.add(v.id);
-    const { loopPass: _lp, ...base } = v;
-    pool.push(base);
+    pool.push(asPoolVideo(v));
   }
   return pool;
 }

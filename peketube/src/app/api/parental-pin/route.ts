@@ -1,12 +1,14 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { getSessionUserId } from "@/lib/auth/session-user";
+import { getSessionUserId, getSessionUserEmail } from "@/lib/auth/session-user";
+import { ensureParentalPinMigratedToStableUser } from "@/lib/auth/user-id-migration";
 import {
   deleteParentalPinRow,
   getParentalPinRow,
   upsertParentalPinRow,
   type ParentalPinRow,
 } from "@/lib/blacklist/sqlite-store";
+import { logServerError, logServerInfo } from "@/lib/logging/server-log";
 import { PBKDF2_ITERATIONS } from "@/lib/parental/constants";
 import { isValidPinFormat, normalizeRecoveryPhrase } from "@/lib/parental/pin-format";
 import {
@@ -15,20 +17,51 @@ import {
   verifyPinRecord,
 } from "@/lib/parental/pin-node";
 
-export async function GET(req: NextRequest) {
-  const userId = await getSessionUserId(req);
-  if (!userId) {
-    return NextResponse.json({ error: "AUTH_REQUIRED" }, { status: 401 });
+function pinUserIdKind(id: string): string {
+  if (/^\d{10,}$/.test(id)) return "google-sub";
+  if (
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      id,
+    )
+  ) {
+    return "uuid";
   }
-  const row = getParentalPinRow(userId);
-  return NextResponse.json({
-    hasPin: row != null,
-    hasRecovery:
-      row != null &&
-      row.recoveryHashB64 != null &&
-      row.recoverySaltB64 != null &&
-      row.recoveryIter != null,
-  });
+  return "other";
+}
+
+export async function GET(req: NextRequest) {
+  try {
+    const userId = await getSessionUserId(req);
+    if (!userId) {
+      logServerInfo("parental-pin", "GET auth_required (sin userId en sesión)");
+      return NextResponse.json({ error: "AUTH_REQUIRED" }, { status: 401 });
+    }
+    const email = await getSessionUserEmail();
+    ensureParentalPinMigratedToStableUser(userId, email);
+    const row = getParentalPinRow(userId);
+    logServerInfo(
+      "parental-pin",
+      `GET user=${userId.length > 10 ? `${userId.slice(0, 6)}…${userId.slice(-4)}` : userId} idKind=${pinUserIdKind(userId)} hasPin=${row != null}`,
+    );
+    return NextResponse.json(
+      {
+        hasPin: row != null,
+        hasRecovery:
+          row != null &&
+          row.recoveryHashB64 != null &&
+          row.recoverySaltB64 != null &&
+          row.recoveryIter != null,
+      },
+      {
+        headers: {
+          "Cache-Control": "private, no-store, max-age=0",
+        },
+      },
+    );
+  } catch (e) {
+    logServerError("parental-pin", e);
+    return NextResponse.json({ error: "SERVER_ERROR" }, { status: 500 });
+  }
 }
 
 export async function PUT(req: NextRequest) {
@@ -36,6 +69,8 @@ export async function PUT(req: NextRequest) {
   if (!userId) {
     return NextResponse.json({ error: "AUTH_REQUIRED" }, { status: 401 });
   }
+  const email = await getSessionUserEmail();
+  ensureParentalPinMigratedToStableUser(userId, email);
   let body: unknown;
   try {
     body = await req.json();
@@ -78,7 +113,17 @@ export async function PUT(req: NextRequest) {
       recoveryHashB64: derivePinHashB64(norm, recSalt, PBKDF2_ITERATIONS),
       recoveryIter: PBKDF2_ITERATIONS,
     };
-    upsertParentalPinRow(userId, next);
+    try {
+      upsertParentalPinRow(userId, next, email);
+      const uid =
+        userId.length > 10
+          ? `${userId.slice(0, 6)}…${userId.slice(-4)}`
+          : userId;
+      logServerInfo("parental-pin", `PUT create ok user=${uid} idKind=${pinUserIdKind(userId)}`);
+    } catch (e) {
+      logServerError("parental-pin", e);
+      return NextResponse.json({ error: "SERVER_STORAGE" }, { status: 500 });
+    }
     return NextResponse.json({ ok: true });
   }
 
@@ -104,7 +149,7 @@ export async function PUT(req: NextRequest) {
       recoveryHashB64: row.recoveryHashB64,
       recoveryIter: row.recoveryIter,
     };
-    upsertParentalPinRow(userId, next);
+    upsertParentalPinRow(userId, next, email);
     return NextResponse.json({ ok: true });
   }
 
@@ -141,7 +186,7 @@ export async function PUT(req: NextRequest) {
       recoveryHashB64: row.recoveryHashB64,
       recoveryIter: row.recoveryIter,
     };
-    upsertParentalPinRow(userId, next);
+    upsertParentalPinRow(userId, next, email);
     return NextResponse.json({ ok: true });
   }
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -17,17 +18,27 @@ export default function ParentalProtectedLayout({
 }) {
   const router = useRouter();
   const pathname = usePathname();
+  const { data: session, status } = useSession();
+  const oauthUserId =
+    typeof session?.user?.id === "string" && session.user.id.length > 0
+      ? session.user.id
+      : null;
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    if (!isParentalSessionUnlocked(Date.now())) {
+    if (status === "loading") return;
+    if (!oauthUserId) {
       router.replace("/parental/login");
       return;
     }
-    void touchParentalSession().then(() => setReady(true));
-  }, [pathname, router]);
+    if (!isParentalSessionUnlocked(oauthUserId)) {
+      router.replace("/parental/login");
+      return;
+    }
+    void touchParentalSession(oauthUserId).then(() => setReady(true));
+  }, [pathname, router, status, oauthUserId]);
 
-  if (!ready) {
+  if (status === "loading" || !ready) {
     return (
       <main className="flex min-h-dvh items-center justify-center p-4">
         <p className="text-sm text-muted-foreground">Cargando panel…</p>

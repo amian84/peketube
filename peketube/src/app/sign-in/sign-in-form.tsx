@@ -79,15 +79,41 @@ export function SignInForm({ googleOAuthReady }: SignInFormProps) {
           invitado.
         </p>
       )}
+      {googleOAuthReady ? (
+        <div className="max-w-md space-y-2 rounded-lg border border-[var(--yt-border)] bg-[var(--yt-surface)] px-4 py-3 text-sm text-muted-foreground">
+          <p className="font-medium text-foreground">
+            ¿Google dice que la app no está verificada?
+          </p>
+          <p>
+            PekeTube es un proyecto personal. Google muestra ese aviso porque
+            pedimos acceso de solo lectura a YouTube; la verificación oficial
+            está <strong className="text-foreground">en proceso</strong>, pero
+            Google tarda su tiempo en completarla. Mientras tanto puedes seguir
+            sin problema:
+          </p>
+          <ol className="list-inside list-decimal space-y-1 text-left">
+            <li>
+              En la pantalla de Google, pulsa{" "}
+              <strong className="text-foreground">Configuración avanzada</strong>.
+            </li>
+            <li>
+              Pulsa{" "}
+              <strong className="text-foreground">Ir a PekeTube (no seguro)</strong>{" "}
+              (o el texto equivalente).
+            </li>
+            <li>Confirma los permisos y volverás a PekeTube.</li>
+          </ol>
+        </div>
+      ) : null}
       {!googleOAuthReady ? (
         <div className="max-w-md rounded-lg border border-amber-600/50 bg-amber-950/40 px-4 py-3 text-sm text-amber-100">
           <p className="font-medium text-amber-50">Falta configurar Google OAuth</p>
           <p className="mt-2 text-amber-100/90">
-            En el archivo{" "}
+            En el servidor (variables de entorno del contenedor o{" "}
             <code className="rounded bg-black/30 px-1 py-0.5 text-xs">
               peketube/.env.local
             </code>{" "}
-            debes definir valores reales (no vacíos) para:
+            en desarrollo) debes definir valores reales (no vacíos) para:
           </p>
           <ul className="mt-2 list-inside list-disc text-amber-100/90">
             <li>
@@ -106,6 +132,14 @@ export function SignInForm({ googleOAuthReady }: SignInFormProps) {
       >
         {sessionExpired ? "Volver a conectar con Google" : "Continuar con Google"}
       </Button>
+      <p className="max-w-sm text-center text-xs text-muted-foreground">
+        <Link
+          href="/privacy"
+          className="text-[#3ea6ff] underline-offset-2 hover:underline"
+        >
+          Política de privacidad
+        </Link>
+      </p>
       <Link
         href={callbackUrl.startsWith("/sign-in") ? "/" : callbackUrl}
         className={cn(buttonVariants({ variant: "outline" }), "min-w-[220px]")}

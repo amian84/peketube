@@ -39,11 +39,11 @@ export function TopBar() {
   };
 
   return (
-    <header className="sticky top-0 z-40 border-b border-[#272727] bg-[#0f0f0f]/95 backdrop-blur supports-[backdrop-filter]:bg-[#0f0f0f]/80">
-      <div className="flex h-12 items-center gap-2 px-2 sm:h-14 sm:px-3">
+    <header className="sticky top-0 z-40 border-b border-[var(--yt-border)] bg-[var(--yt-app-bg-translucent)] backdrop-blur supports-[backdrop-filter]:bg-[var(--yt-app-bg-blur)]">
+      <div className="flex h-12 items-center gap-2 px-2 sm:h-14 sm:px-3 lg:grid lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:gap-4 lg:px-4">
         <Link
           href="/"
-          className="shrink-0 touch-manipulation rounded-md p-1 outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
+          className="shrink-0 touch-manipulation rounded-md p-1 outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring lg:justify-self-start"
           aria-label="Inicio (mantén pulsado 5 s para panel parental)"
           onClick={(e) => {
             if (skipHomeNavRef.current) {
@@ -58,9 +58,9 @@ export function TopBar() {
 
         <form
           onSubmit={onSearchSubmit}
-          className="flex min-w-0 flex-1 items-center gap-1 rounded-full bg-[#1f1f1f] px-2 py-1 sm:px-3"
+          className="flex min-w-0 flex-1 items-center gap-1 rounded-full bg-[var(--yt-chip-bg)] px-2 py-1 sm:px-3 lg:max-w-[720px] lg:justify-self-center lg:px-4"
         >
-          <Search className="h-4 w-4 shrink-0 text-[#aaa]" aria-hidden />
+          <Search className="h-4 w-4 shrink-0 text-[var(--yt-text-secondary)]" aria-hidden />
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
@@ -78,9 +78,11 @@ export function TopBar() {
           </Button>
         </form>
 
+        <div className="flex shrink-0 items-center gap-0.5 lg:justify-self-end">
         {oauthReady ? <NotificationsPopover /> : null}
 
         <TopBarAccount />
+        </div>
       </div>
     </header>
   );

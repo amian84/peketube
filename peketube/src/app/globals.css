@@ -15,6 +15,21 @@
     --font-sans: var(--font-sans);
   }
   :root {
+    --yt-app-bg: #ffffff;
+    --yt-app-bg-translucent: rgb(255 255 255 / 0.95);
+    --yt-app-bg-blur: rgb(255 255 255 / 0.8);
+    --yt-border: #e5e5e5;
+    --yt-text-primary: #0f0f0f;
+    --yt-text-secondary: #606060;
+    --yt-chip-bg: #f2f2f2;
+    --yt-chip-bg-hover: #e5e5e5;
+    --yt-chip-active-bg: #0f0f0f;
+    --yt-chip-active-text: #ffffff;
+    --yt-surface: #f9f9f9;
+    --yt-surface-elevated: #f2f2f2;
+    --yt-surface-hover: #e5e5e5;
+    --yt-avatar-bg: #e5e5e5;
+    --yt-avatar-ring: #d0d0d0;
     --background: oklch(1 0 0);
     --foreground: oklch(0.145 0 0);
     --card: oklch(1 0 0);
@@ -50,6 +65,21 @@
     --sidebar-ring: oklch(0.708 0 0);
   }
   .dark {
+    --yt-app-bg: #0f0f0f;
+    --yt-app-bg-translucent: rgb(15 15 15 / 0.95);
+    --yt-app-bg-blur: rgb(15 15 15 / 0.8);
+    --yt-border: #272727;
+    --yt-text-primary: #f1f1f1;
+    --yt-text-secondary: #aaaaaa;
+    --yt-chip-bg: #1f1f1f;
+    --yt-chip-bg-hover: #272727;
+    --yt-chip-active-bg: #272727;
+    --yt-chip-active-text: #ffffff;
+    --yt-surface: #181818;
+    --yt-surface-elevated: #272727;
+    --yt-surface-hover: #3f3f3f;
+    --yt-avatar-bg: #272727;
+    --yt-avatar-ring: #3f3f3f;
     /* YouTube-like dark (PekeTube) */
     --background: oklch(0.145 0 0);
     --foreground: oklch(0.985 0 0);
@@ -93,4 +123,25 @@
   html {
     @apply font-sans;
   }
+}
+
+/* Reproductor PekeTube — pantalla completa: contenedor flex; tamaño 16:9 vía JS. */
+.peketube-player:fullscreen,
+.peketube-player:-webkit-full-screen,
+.peketube-player:-moz-full-screen {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  border-radius: 0;
+  background: #000;
+  overflow: hidden;
+}
+
+.peketube-player:fullscreen .peketube-player-stage,
+.peketube-player:-webkit-full-screen .peketube-player-stage,
+.peketube-player:-moz-full-screen .peketube-player-stage {
+  flex: 0 0 auto;
 }

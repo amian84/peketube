@@ -1,12 +1,61 @@
-import { auth } from "@/auth";
+import NextAuth from "next-auth";
+import { authConfig } from "@/auth.config";
+import { PEKETUBE_INFO_HOST } from "@/lib/landing/constants";
+import {
+  adminViewerUnauthorizedResponse,
+  isAdminIngestPath,
+  isAdminViewerAuthorized,
+  isAdminViewerPath,
+} from "@/lib/admin-viewer/basic-auth";
+import { isAdminViewerEnabled } from "@/lib/admin-viewer/credentials";
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
-/**
- * Rutas públicas sin login; `/parental` sigue protegido.
- * Modo invitado usa YOUTUBE_API_KEY en `/api/yt/*`.
- */
-export default auth((req) => {
+function hostBase(hostHeader: string | null): string {
+  return (hostHeader ?? "").split(":")[0].toLowerCase();
+}
+
+function isLandingHost(host: string): boolean {
+  const configured = (process.env.PEKETUBE_INFO_HOST ?? PEKETUBE_INFO_HOST).toLowerCase();
+  return host === configured;
+}
+
+/** HTTP Basic Auth (estilo htaccess) para /logs y /stats. */
+function handleAdminViewerAuth(req: NextRequest): Response | NextResponse | null {
   const { pathname } = req.nextUrl;
+  if (!isAdminViewerPath(pathname)) return null;
+  if (!isAdminViewerEnabled()) {
+    return NextResponse.json({ error: "not_found" }, { status: 404 });
+  }
+  if (!isAdminViewerAuthorized(req)) {
+    return adminViewerUnauthorizedResponse();
+  }
+  return NextResponse.next();
+}
+
+const { auth: edgeAuth } = NextAuth(authConfig);
+
+const authMiddleware = edgeAuth((req) => {
+  const { pathname } = req.nextUrl;
+  const host = hostBase(req.headers.get("host"));
+
+  if (isLandingHost(host)) {
+    if (
+      pathname.startsWith("/api") ||
+      pathname.startsWith("/_next") ||
+      pathname.startsWith("/landing/") ||
+      pathname.startsWith("/icons/") ||
+      pathname === "/favicon.ico"
+    ) {
+      return NextResponse.next();
+    }
+    if (pathname === "/info") {
+      return NextResponse.next();
+    }
+    const url = req.nextUrl.clone();
+    url.pathname = "/info";
+    return NextResponse.rewrite(url);
+  }
 
   if (pathname.startsWith("/api/auth")) {
     return NextResponse.next();
@@ -14,11 +63,15 @@ export default auth((req) => {
   if (pathname === "/sign-in") {
     return NextResponse.next();
   }
+  if (isAdminIngestPath(pathname)) {
+    return NextResponse.next();
+  }
   if (
     pathname.startsWith("/_next") ||
     pathname === "/favicon.ico" ||
     pathname === "/manifest.webmanifest" ||
     pathname.startsWith("/icons/") ||
+    pathname.startsWith("/landing/") ||
     pathname.startsWith("/splash/") ||
     pathname === "/sw.js" ||
     pathname.startsWith("/workbox")
@@ -42,11 +95,14 @@ export default auth((req) => {
     return NextResponse.next();
   }
 
-  // Sesión OAuth caducada: no forzar /sign-in en rutas públicas; el cliente hace
-  // signOut y las APIs usan modo invitado (YOUTUBE_API_KEY).
-
   return NextResponse.next();
 });
+
+export default function middleware(req: NextRequest) {
+  const adminGuard = handleAdminViewerAuth(req);
+  if (adminGuard) return adminGuard;
+  return authMiddleware(req);
+}
 
 export const config = {
   matcher: [

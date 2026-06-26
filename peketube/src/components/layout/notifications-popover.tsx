@@ -66,7 +66,7 @@ export function NotificationsPopover() {
         type="button"
         variant="ghost"
         size="icon-sm"
-        className="text-[#aaa] hover:text-white"
+        className="text-[var(--yt-text-secondary)] hover:text-[var(--yt-text-primary)]"
         aria-expanded={open}
         aria-haspopup="dialog"
         aria-label="Notificaciones"
@@ -82,11 +82,11 @@ export function NotificationsPopover() {
         <div
           role="dialog"
           aria-label="Notificaciones"
-          className="absolute right-0 top-full z-[100] mt-1 w-[min(100vw-1rem,22rem)] rounded-lg border border-[#272727] bg-[#1f1f1f] shadow-xl"
+          className="absolute right-0 top-full z-[100] mt-1 w-[min(100vw-1rem,22rem)] rounded-lg border border-[var(--yt-border)] bg-[var(--yt-chip-bg)] shadow-xl"
         >
-          <div className="border-b border-[#272727] px-3 py-2">
-            <p className="text-sm font-semibold text-white">Notificaciones</p>
-            <p className="text-[11px] leading-snug text-[#aaa]">
+          <div className="border-b border-[var(--yt-border)] px-3 py-2">
+            <p className="text-sm font-semibold text-[var(--yt-text-primary)]">Notificaciones</p>
+            <p className="text-[11px] leading-snug text-[var(--yt-text-secondary)]">
               Actividad de tu cuenta (canales que sigues, vídeos, etc.). No es el
               mismo inbox que la app oficial en todos los casos.
             </p>
@@ -106,12 +106,12 @@ export function NotificationsPopover() {
                 Sin notificaciones
               </p>
             ) : (
-              <ul className="divide-y divide-[#272727]">
+              <ul className="divide-y divide-[var(--yt-border)]">
                 {items.map((n) => (
                   <li key={n.id}>
                     <button
                       type="button"
-                      className="flex w-full gap-2 px-2 py-2.5 text-left hover:bg-[#2a2a2a]"
+                      className="flex w-full gap-2 px-2 py-2.5 text-left hover:bg-[var(--yt-chip-bg-hover)]"
                       onClick={() => onItemActivate(n)}
                     >
                       <div className="relative h-12 w-20 shrink-0 overflow-hidden rounded bg-muted">
@@ -126,11 +126,11 @@ export function NotificationsPopover() {
                         ) : null}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="line-clamp-2 text-xs font-medium text-white">
+                        <p className="line-clamp-2 text-xs font-medium text-[var(--yt-text-primary)]">
                           {n.title}
                         </p>
                         {n.subtitle ? (
-                          <p className="mt-0.5 line-clamp-2 text-[11px] text-[#aaa]">
+                          <p className="mt-0.5 line-clamp-2 text-[11px] text-[var(--yt-text-secondary)]">
                             {n.subtitle}
                           </p>
                         ) : null}
@@ -147,7 +147,7 @@ export function NotificationsPopover() {
           </div>
 
           {settings.showVideoComments ? (
-            <p className="border-t border-[#272727] px-3 py-2 text-[10px] leading-snug text-[#888]">
+            <p className="border-t border-[var(--yt-border)] px-3 py-2 text-[10px] leading-snug text-muted-foreground">
               Con comentarios de vídeo activados, las respuestas pueden aparecer
               en esta lista si YouTube las incluye en tu feed de actividad. Si no,
               revisa la app de YouTube o YouTube Studio.

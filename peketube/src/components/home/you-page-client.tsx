@@ -12,6 +12,7 @@ import { listHistory } from "@/lib/db/history";
 import type { WatchHistoryRow } from "@/lib/db/schema";
 import type { VideoDTO } from "@/lib/yt/types";
 import { isVideoBlacklisted } from "@/lib/yt/filter";
+import { MAIN_BOTTOM_PAD, VIDEO_GRID_CLASS } from "@/lib/layout/responsive";
 
 function watchRowToVideo(row: WatchHistoryRow): VideoDTO {
   return {
@@ -59,14 +60,14 @@ function YouHistorySection() {
   }, []);
 
   return (
-    <section id="historial" className="w-full max-w-lg pb-4">
+    <section id="historial" className="w-full max-w-lg pb-4 lg:max-w-3xl">
       <h2 className="mb-3 text-base font-semibold">Historial</h2>
       {rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           Sin vídeos en el historial todavía.
         </p>
       ) : (
-        <div className="flex flex-col">
+        <div className={VIDEO_GRID_CLASS}>
           {rows.map((row) => (
             <VideoCard
               key={row.videoId}
@@ -84,7 +85,14 @@ function YouHistorySection() {
         </div>
       )}
       <p className="mt-3 text-xs text-muted-foreground">
-        Borrar historial: panel parental (PIN y confirmación, prompt 07).
+        Para borrar el historial, entra en{" "}
+        <Link
+          href="/parental/login"
+          className="font-medium text-primary underline-offset-2 hover:underline"
+        >
+          Panel parental
+        </Link>{" "}
+        con tu PIN → Ajustes.
       </p>
     </section>
   );
@@ -105,7 +113,7 @@ export function YouPageClient() {
 
   if (!oauthReady) {
     return (
-      <div className="flex flex-col items-center gap-6 px-4 pb-24 pt-6">
+      <div className={`flex flex-col items-center gap-6 px-4 pt-6 ${MAIN_BOTTOM_PAD}`}>
         <p className="text-center text-lg font-medium">Modo invitado</p>
         <p className="max-w-sm text-center text-sm text-muted-foreground">
           Conecta tu cuenta de Google para ver tu perfil, suscripciones y usar tu
@@ -123,7 +131,7 @@ export function YouPageClient() {
   }
 
   return (
-    <div className="flex flex-col items-center gap-6 px-4 pb-24 pt-6">
+    <div className={`flex flex-col items-center gap-6 px-4 pt-6 ${MAIN_BOTTOM_PAD}`}>
       <div className="relative h-24 w-24 overflow-hidden rounded-full bg-muted ring-2 ring-border">
         {user?.image ? (
           <Image src={user.image} alt="" fill className="object-cover" />
@@ -135,13 +143,6 @@ export function YouPageClient() {
       </div>
       <p className="text-center text-lg font-medium">{label}</p>
 
-      <div className="w-full max-w-sm space-y-2">
-        <div className="flex w-full items-center justify-between rounded-lg border border-dashed border-border px-4 py-3 text-sm text-muted-foreground">
-          Tus vídeos
-          <span className="text-xs">Próximamente</span>
-        </div>
-      </div>
-
       <YouHistorySection />
 
       <p className="max-w-sm text-center text-xs text-muted-foreground">
@@ -152,7 +153,7 @@ export function YouPageClient() {
           Panel parental
         </Link>
         {" · "}
-        Cerrar sesión: solo desde el panel parental (OQ-02-004, prompt 07).
+        Cerrar sesión de Google solo desde el panel parental (Ajustes).
       </p>
     </div>
   );

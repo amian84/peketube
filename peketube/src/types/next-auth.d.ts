@@ -3,7 +3,10 @@ import type { DefaultSession } from "next-auth";
 declare module "next-auth" {
   interface Session {
     error?: "RefreshAccessTokenError";
-    user: DefaultSession["user"];
+    user: DefaultSession["user"] & {
+      /** Google OAuth `sub` — clave estable en SQLite (PIN, blacklist). */
+      id?: string;
+    };
   }
 }
 

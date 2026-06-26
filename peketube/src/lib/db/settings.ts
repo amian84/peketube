@@ -10,6 +10,18 @@ import {
   MAX_PARENTAL_SESSION_TTL_MS,
   MIN_PARENTAL_SESSION_TTL_MS,
 } from "@/lib/parental/constants";
+import type { ThemeMode } from "@/lib/theme/resolve-theme";
+import {
+  DEFAULT_PLAYER_SEEK_STEP_SEC,
+  clampPlayerSeekStepSec,
+} from "@/lib/player/seek-step";
+import {
+  DEFAULT_FEED_BOOTSTRAP_TIMEOUT_SEC,
+  DEFAULT_FEED_LOAD_TIMEOUT_SEC,
+  DEFAULT_PLAYER_READY_TIMEOUT_SEC,
+  DEFAULT_WATCH_META_TIMEOUT_SEC,
+  clampLoadTimeoutSec,
+} from "@/lib/loading/timeouts";
 import { getPeketubeDb } from "./schema";
 
 const SETTINGS_ROW_KEY = "app";
@@ -30,19 +42,31 @@ export interface PeketubeSettings {
   relevanceLanguage: string;
   /** OQ-04-001 — autoplay del siguiente en /watch (panel parental prompt 07). */
   autoPlayNext: boolean;
+  /** Segundos al doble toque/clic en los lados del reproductor (2–60). */
+  playerSeekStepSec: number;
+  /** Segundos máx. esperando sesión/listas antes del feed (5–120). */
+  feedBootstrapTimeoutSec: number;
+  /** Segundos máx. de la petición inicial del feed (5–120). */
+  feedLoadTimeoutSec: number;
+  /** Segundos máx. cargando metadatos del vídeo en /watch (5–120). */
+  watchMetaTimeoutSec: number;
+  /** Segundos máx. hasta que el reproductor YouTube esté listo (5–120). */
+  playerReadyTimeoutSec: number;
   /** OQ-04-003 — mostrar comentarios en /watch (panel parental prompt 07). */
   showVideoComments: boolean;
   /** OQ-05-001 — default primer PLAYING. */
   historyRecordMode: HistoryRecordMode;
   /** OQ-05-002 — días de retención (1–365), default 30. */
   historyRetentionDays: number;
-  /** OQ-07-003 — TTL sesión parental (ms), default 5 min. */
+  /** OQ-07-003 — TTL sesión parental (ms), default 1 min. */
   parentalSessionTtlMs: number;
   /**
    * Máx. vídeos en home y en resultados de búsqueda antes de dejar de pedir a la
    * API; al seguir bajando se vuelve al inicio de la lista (24–300).
    */
   scrollLoopMaxItems: number;
+  /** Claro / oscuro / automático según hora local (20:00–07:00 oscuro). */
+  themeMode: ThemeMode;
 }
 
 export const DEFAULT_PEKETUBE_SETTINGS: PeketubeSettings = {
@@ -53,11 +77,17 @@ export const DEFAULT_PEKETUBE_SETTINGS: PeketubeSettings = {
   regionCode: DEFAULT_REGION_CODE,
   relevanceLanguage: DEFAULT_RELEVANCE_LANGUAGE,
   autoPlayNext: true,
+  playerSeekStepSec: DEFAULT_PLAYER_SEEK_STEP_SEC,
+  feedBootstrapTimeoutSec: DEFAULT_FEED_BOOTSTRAP_TIMEOUT_SEC,
+  feedLoadTimeoutSec: DEFAULT_FEED_LOAD_TIMEOUT_SEC,
+  watchMetaTimeoutSec: DEFAULT_WATCH_META_TIMEOUT_SEC,
+  playerReadyTimeoutSec: DEFAULT_PLAYER_READY_TIMEOUT_SEC,
   showVideoComments: false,
   historyRecordMode: "on_play",
   historyRetentionDays: 30,
   parentalSessionTtlMs: DEFAULT_PARENTAL_SESSION_TTL_MS,
   scrollLoopMaxItems: 80,
+  themeMode: "auto",
 };
 
 function mergeSettings(raw: unknown): PeketubeSettings {
@@ -93,6 +123,33 @@ function mergeSettings(raw: unknown): PeketubeSettings {
   if (typeof o.autoPlayNext === "boolean") {
     base.autoPlayNext = o.autoPlayNext;
   }
+  if (typeof o.playerSeekStepSec === "number") {
+    base.playerSeekStepSec = clampPlayerSeekStepSec(o.playerSeekStepSec);
+  }
+  if (typeof o.feedBootstrapTimeoutSec === "number") {
+    base.feedBootstrapTimeoutSec = clampLoadTimeoutSec(
+      o.feedBootstrapTimeoutSec,
+      DEFAULT_FEED_BOOTSTRAP_TIMEOUT_SEC,
+    );
+  }
+  if (typeof o.feedLoadTimeoutSec === "number") {
+    base.feedLoadTimeoutSec = clampLoadTimeoutSec(
+      o.feedLoadTimeoutSec,
+      DEFAULT_FEED_LOAD_TIMEOUT_SEC,
+    );
+  }
+  if (typeof o.watchMetaTimeoutSec === "number") {
+    base.watchMetaTimeoutSec = clampLoadTimeoutSec(
+      o.watchMetaTimeoutSec,
+      DEFAULT_WATCH_META_TIMEOUT_SEC,
+    );
+  }
+  if (typeof o.playerReadyTimeoutSec === "number") {
+    base.playerReadyTimeoutSec = clampLoadTimeoutSec(
+      o.playerReadyTimeoutSec,
+      DEFAULT_PLAYER_READY_TIMEOUT_SEC,
+    );
+  }
   if (typeof o.showVideoComments === "boolean") {
     base.showVideoComments = o.showVideoComments;
   }
@@ -116,6 +173,13 @@ function mergeSettings(raw: unknown): PeketubeSettings {
   if (typeof o.scrollLoopMaxItems === "number") {
     const n = Math.floor(o.scrollLoopMaxItems);
     if (n >= 24 && n <= 300) base.scrollLoopMaxItems = n;
+  }
+  if (
+    o.themeMode === "auto" ||
+    o.themeMode === "light" ||
+    o.themeMode === "dark"
+  ) {
+    base.themeMode = o.themeMode;
   }
   return base;
 }

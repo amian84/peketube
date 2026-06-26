@@ -25,8 +25,8 @@ export function CategoryChips<T extends string>({
           className={cn(
             "shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
             selectedId === c.id
-              ? "bg-[#272727] text-white"
-              : "bg-[#1f1f1f] text-[#aaa] hover:bg-[#272727] hover:text-white",
+              ? "bg-[var(--yt-chip-active-bg)] text-[var(--yt-chip-active-text)]"
+              : "bg-[var(--yt-chip-bg)] text-[var(--yt-text-secondary)] hover:bg-[var(--yt-chip-bg-hover)] hover:text-[var(--yt-text-primary)]",
           )}
         >
           {c.label}

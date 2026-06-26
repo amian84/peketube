@@ -3,6 +3,9 @@ import { Roboto } from "next/font/google";
 import { AppleSplashHead } from "@/components/pwa/apple-splash-head";
 import { AuthProvider } from "@/components/providers/auth-provider";
 import { BlacklistProvider } from "@/components/providers/blacklist-provider";
+import { ThemeProvider } from "@/components/providers/theme-provider";
+import { UsageSessionTracker } from "@/components/stats/usage-session-tracker";
+import { themeBootstrapScript } from "@/lib/theme/theme-cache";
 import "./globals.css";
 
 const roboto = Roboto({
@@ -32,7 +35,10 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0F0F0F",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#FFFFFF" },
+    { media: "(prefers-color-scheme: dark)", color: "#0F0F0F" },
+  ],
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -44,14 +50,22 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className={`dark ${roboto.variable}`}>
+    <html lang="es" suppressHydrationWarning className={roboto.variable}>
       <head>
+        <script
+          dangerouslySetInnerHTML={{ __html: themeBootstrapScript() }}
+        />
         <AppleSplashHead />
       </head>
       <body className="min-h-dvh bg-background font-sans text-foreground antialiased">
-        <AuthProvider>
-          <BlacklistProvider>{children}</BlacklistProvider>
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <BlacklistProvider>
+              <UsageSessionTracker />
+              {children}
+            </BlacklistProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

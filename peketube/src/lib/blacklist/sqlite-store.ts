@@ -4,6 +4,7 @@ import fs from "fs";
 import path from "path";
 import Database from "better-sqlite3";
 import { ensureWatchHistorySchema } from "@/lib/watch-history/schema";
+import { ensureStatsSchema } from "@/lib/stats/schema";
 
 let db: Database.Database | null = null;
 
@@ -45,6 +46,13 @@ export function getBlacklistSqlite(): Database.Database {
     );
   `);
   ensureWatchHistorySchema(instance);
+  ensureStatsSchema(instance);
+  const pinCols = instance
+    .prepare(`PRAGMA table_info(user_parental_pin)`)
+    .all() as { name: string }[];
+  if (!pinCols.some((c) => c.name === "email")) {
+    instance.exec(`ALTER TABLE user_parental_pin ADD COLUMN email TEXT`);
+  }
   db = instance;
   return db;
 }
@@ -200,18 +208,36 @@ export function getParentalPinRow(userId: string): ParentalPinRow | null {
   };
 }
 
-export function upsertParentalPinRow(userId: string, data: ParentalPinRow): void {
+/** UUID Auth.js con PIN más reciente (migración tras arreglar OAuth). */
+export function getLatestLegacyParentalPinUserId(): string | null {
+  const rows = getBlacklistSqlite()
+    .prepare(
+      `SELECT user_id FROM user_parental_pin
+       WHERE user_id GLOB '*-*-*-*-*'
+       ORDER BY updated_at DESC`,
+    )
+    .all() as { user_id: string }[];
+  return rows[0]?.user_id ?? null;
+}
+
+export function upsertParentalPinRow(
+  userId: string,
+  data: ParentalPinRow,
+  email?: string | null,
+): void {
   const now = Date.now();
+  const emailNorm = email?.trim().toLowerCase() || null;
   getBlacklistSqlite()
     .prepare(
       `INSERT INTO user_parental_pin (
-        user_id, pin_salt_b64, pin_hash_b64, pin_iter,
+        user_id, email, pin_salt_b64, pin_hash_b64, pin_iter,
         recovery_salt_b64, recovery_hash_b64, recovery_iter, updated_at
       ) VALUES (
-        @user_id, @pin_salt_b64, @pin_hash_b64, @pin_iter,
+        @user_id, @email, @pin_salt_b64, @pin_hash_b64, @pin_iter,
         @recovery_salt_b64, @recovery_hash_b64, @recovery_iter, @updated_at
       )
       ON CONFLICT(user_id) DO UPDATE SET
+        email = COALESCE(excluded.email, user_parental_pin.email),
         pin_salt_b64 = excluded.pin_salt_b64,
         pin_hash_b64 = excluded.pin_hash_b64,
         pin_iter = excluded.pin_iter,
@@ -222,6 +248,7 @@ export function upsertParentalPinRow(userId: string, data: ParentalPinRow): void
     )
     .run({
       user_id: userId,
+      email: emailNorm,
       pin_salt_b64: data.pinSaltB64,
       pin_hash_b64: data.pinHashB64,
       pin_iter: data.pinIter,

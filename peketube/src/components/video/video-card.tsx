@@ -33,14 +33,14 @@ export function VideoCard({ video, historyProgress }: VideoCardProps) {
 
   return (
     <Link href={href} className="block w-full min-w-0">
-      <div className="relative aspect-video w-full overflow-hidden rounded-none bg-muted sm:rounded-xl">
+      <div className="relative aspect-video w-full overflow-hidden rounded-none bg-muted sm:rounded-xl lg:rounded-xl">
         {video.thumbnailUrl ? (
           <Image
             src={video.thumbnailUrl}
             alt=""
             fill
             className="object-cover"
-            sizes="(max-width: 768px) 100vw, 50vw"
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1536px) 33vw, 20vw"
           />
         ) : null}
         {showHistoryBar ? (
@@ -64,7 +64,7 @@ export function VideoCard({ video, historyProgress }: VideoCardProps) {
           </span>
         ) : null}
       </div>
-      <div className="mt-2 flex gap-3 px-1 pb-4 sm:px-0">
+      <div className="mt-2 flex gap-3 px-1 pb-3 sm:px-0 lg:pb-2">
         <div className="min-w-0 flex-1">
           <h3 className="line-clamp-2 text-sm font-medium leading-snug text-foreground">
             {video.title}

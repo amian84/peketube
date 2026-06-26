@@ -2,7 +2,6 @@ import { getPeketubeDb, type WatchHistoryRow } from "@/lib/db/schema";
 import { getSettingsFromDexie } from "@/lib/db/settings";
 import {
   clearWatchHistoryOnServer,
-  pullWatchHistoryFromServer,
   pushProgressToServer,
   pushRecordWatchToServer,
 } from "@/lib/db/history-sync";

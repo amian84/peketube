@@ -1,15 +1,17 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { getSession, useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   createParentalPinWithRecovery,
   generateRecoveryPhrase,
-  hasPin,
+  hasPinWithRetry,
+  isParentalAuthError,
   normalizeRecoveryPhrase,
 } from "@/lib/parental/pin";
+import { devClientLog } from "@/lib/dev/client-log";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -47,15 +49,41 @@ export function ParentalSetupWizard() {
     }
     try {
       await createParentalPinWithRecovery(pin, phrase);
+      devClientLog("[ParentalPin]", { event: "create-put-ok" });
+      const persisted = await hasPinWithRetry(getSession, { recheckIfFalse: true });
+      if (!persisted) {
+        devClientLog("[ParentalPin]", {
+          event: "create-verify-failed",
+          reason: "hasPin-false-after-put",
+        });
+        setErr(
+          "No se pudo confirmar el PIN en el servidor. Si usas Docker, comprueba que el volumen /data persiste (PEKETUBE_SERVER_DB_PATH).",
+        );
+        return;
+      }
       router.replace("/parental/login");
-    } catch {
-      setErr("No se pudo guardar. Intenta de nuevo.");
+    } catch (e) {
+      const code = e instanceof Error ? e.message : "";
+      if (code === "AUTH_REQUIRED") {
+        setErr("Sesión caducada. Inicia sesión con Google y vuelve a intentarlo.");
+      } else if (code === "SERVER_STORAGE") {
+        setErr(
+          "No se pudo escribir en la base de datos del servidor. Revisa permisos de /data en el contenedor.",
+        );
+      } else {
+        setErr("No se pudo guardar. Intenta de nuevo.");
+      }
     }
   };
 
   return (
     <div className="mx-auto w-full max-w-md space-y-4 px-2">
       <h1 className="text-center text-xl font-semibold">Configurar PIN</h1>
+      <p className="text-center text-xs text-muted-foreground">
+        Se guarda en el servidor con tu cuenta Google. Si ya lo configuraste y
+        vuelves a ver esta pantalla, puede que la base de datos del contenedor
+        no tenga volumen persistente en <code className="text-[11px]">/data</code>.
+      </p>
       {step === 0 ? (
         <>
           <p className="text-center text-sm text-muted-foreground">
@@ -136,6 +164,7 @@ export function ParentalSetupGate() {
   const router = useRouter();
   const { status } = useSession();
   const [loading, setLoading] = useState(true);
+  const [redirecting, setRedirecting] = useState(false);
   const [fetchErr, setFetchErr] = useState("");
 
   useEffect(() => {
@@ -146,14 +175,35 @@ export function ParentalSetupGate() {
     }
     let alive = true;
     void (async () => {
+      let willRedirect = false;
       try {
-        if (await hasPin()) {
+        if (await hasPinWithRetry(getSession, { recheckIfFalse: true })) {
+          devClientLog("[ParentalPin]", {
+            event: "redirect-login",
+            from: "setup-gate",
+            reason: "hasPin-true",
+          });
+          willRedirect = true;
+          if (alive) setRedirecting(true);
           if (alive) router.replace("/parental/login");
+        } else {
+          devClientLog("[ParentalPin]", {
+            event: "show-setup-wizard",
+            from: "setup-gate",
+            reason: "hasPin-false",
+          });
         }
-      } catch {
-        if (alive) setFetchErr("No se pudo comprobar el PIN. Revisa la red.");
+      } catch (e) {
+        if (!alive) return;
+        if (isParentalAuthError(e)) {
+          setFetchErr(
+            "La sesión aún no está lista. Espera un momento y reintenta.",
+          );
+        } else {
+          setFetchErr("No se pudo comprobar el PIN. Revisa la red.");
+        }
       } finally {
-        if (alive) setLoading(false);
+        if (alive && !willRedirect) setLoading(false);
       }
     })();
     return () => {
@@ -161,7 +211,11 @@ export function ParentalSetupGate() {
     };
   }, [status, router]);
 
-  if (status === "loading" || (status === "authenticated" && loading)) {
+  if (
+    status === "loading" ||
+    redirecting ||
+    (status === "authenticated" && loading)
+  ) {
     return (
       <p className="text-center text-sm text-muted-foreground">Cargando…</p>
     );

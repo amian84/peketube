@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils";
 export function ParentalLoginForm() {
   const router = useRouter();
   const { status } = useSession();
+  const [pin, setPin] = useState("");
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(true);
   const [redirecting, setRedirecting] = useState(false);

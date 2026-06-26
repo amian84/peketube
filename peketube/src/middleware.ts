@@ -101,7 +101,7 @@ const authMiddleware = edgeAuth((req) => {
 export default function middleware(req: NextRequest) {
   const adminGuard = handleAdminViewerAuth(req);
   if (adminGuard) return adminGuard;
-  return authMiddleware(req);
+  return authMiddleware(req, { params: Promise.resolve({}) });
 }
 
 export const config = {

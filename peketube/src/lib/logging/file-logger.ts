@@ -12,12 +12,32 @@ import {
 } from "@/lib/logging/config";
 
 let pruneScheduled = false;
+let logDirUnavailable = false;
+let logDirWarned = false;
 
 function ensureLogDir(): string | null {
   if (!isFileLoggingEnabled()) return null;
+  if (logDirUnavailable) return null;
   const dir = logDirectory();
-  fs.mkdirSync(dir, { recursive: true });
-  return dir;
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+    return dir;
+  } catch (e) {
+    logDirUnavailable = true;
+    if (!logDirWarned) {
+      logDirWarned = true;
+      process.stderr.write(
+        `[peketube-log] cannot use log directory ${dir}: ${e instanceof Error ? e.message : String(e)} (console-only)\n`,
+      );
+    }
+    return null;
+  }
+}
+
+/** Solo tests: resetea caché de directorio no escribible. */
+export function resetLogDirCacheForTests(): void {
+  logDirUnavailable = false;
+  logDirWarned = false;
 }
 
 function formatArgs(args: unknown[]): string {

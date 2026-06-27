@@ -76,7 +76,7 @@ export const DEFAULT_PEKETUBE_SETTINGS: PeketubeSettings = {
   videoTtlMs: DEFAULT_VIDEO_TTL_MS,
   regionCode: DEFAULT_REGION_CODE,
   relevanceLanguage: DEFAULT_RELEVANCE_LANGUAGE,
-  autoPlayNext: true,
+  autoPlayNext: false,
   playerSeekStepSec: DEFAULT_PLAYER_SEEK_STEP_SEC,
   feedBootstrapTimeoutSec: DEFAULT_FEED_BOOTSTRAP_TIMEOUT_SEC,
   feedLoadTimeoutSec: DEFAULT_FEED_LOAD_TIMEOUT_SEC,

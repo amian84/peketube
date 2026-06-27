@@ -210,6 +210,21 @@ export async function fetchChannelById(
   return fetchJsonWithCache(cacheKey, s.videoTtlMs, url);
 }
 
+export async function fetchChannelVideosPage(
+  channelId: string,
+  uploadsPlaylistId?: string,
+  pageToken?: string,
+): Promise<{ data: PageDTO<VideoDTO> } & FetchMeta> {
+  const s = await getSettingsFromDexie();
+  const sp = new URLSearchParams();
+  if (s.strictKidsOnly) sp.set("strictKids", "1");
+  if (uploadsPlaylistId) sp.set("uploads", uploadsPlaylistId);
+  if (pageToken) sp.set("pageToken", pageToken);
+  const url = `/api/yt/channel/${encodeURIComponent(channelId)}/videos?${sp.toString()}`;
+  const cacheKey = `channelVideos:${channelId}:${pageToken ?? ""}:${s.strictKidsOnly}`;
+  return fetchJsonWithCache(cacheKey, s.feedTtlMs, url);
+}
+
 export async function fetchRelatedVideos(
   videoId: string,
   title: string,

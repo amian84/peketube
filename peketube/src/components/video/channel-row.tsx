@@ -11,9 +11,9 @@ type ChannelRowProps = {
   channel: SubscriptionListItem;
 };
 
-/** Fila de canal (suscripciones). Tap → búsqueda por nombre del canal. */
+/** Fila de canal (suscripciones). Tap → página del canal. */
 export function ChannelRow({ channel }: ChannelRowProps) {
-  const href = `/results?q=${encodeURIComponent(channel.title)}`;
+  const href = `/channel/${encodeURIComponent(channel.channelId)}`;
   const { blockChannel } = useBlacklist();
 
   const onBlock = useCallback(

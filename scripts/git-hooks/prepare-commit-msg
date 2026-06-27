@@ -1,0 +1,3 @@
+#!/bin/sh
+# Quita la línea Co-authored-by que inyecta Cursor en commits del agente.
+sed -i '/cursoragent@cursor\.com/d' "$1"

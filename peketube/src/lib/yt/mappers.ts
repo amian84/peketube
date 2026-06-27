@@ -34,7 +34,11 @@ export function mapVideoResource(v: {
   };
   contentDetails?: { duration?: string };
   statistics?: { viewCount?: string };
-  status?: { selfDeclaredMadeForKids?: boolean; madeForKids?: boolean };
+  status?: {
+    selfDeclaredMadeForKids?: boolean;
+    madeForKids?: boolean;
+    embeddable?: boolean;
+  };
 }): VideoDTO {
   const sn = v.snippet;
   const madeForKids =
@@ -50,6 +54,7 @@ export function mapVideoResource(v: {
     durationSec: parseIsoDuration(v.contentDetails?.duration),
     viewCount: v.statistics?.viewCount,
     madeForKids,
+    embeddable: v.status?.embeddable,
   };
 }
 
@@ -85,20 +90,30 @@ export function mapChannelResource(c: {
     description?: string;
     thumbnails?: Record<string, { url?: string }>;
   };
-  statistics?: { subscriberCount?: string; videoCount?: string };
+  statistics?: {
+    subscriberCount?: string;
+    videoCount?: string;
+    hiddenSubscriberCount?: boolean;
+  };
   contentDetails?: {
     relatedPlaylists?: { uploads?: string };
+  };
+  brandingSettings?: {
+    image?: { bannerExternalUrl?: string };
   };
 }): ChannelDTO {
   const sn = c.snippet;
   const uploads = c.contentDetails?.relatedPlaylists?.uploads;
+  const banner = c.brandingSettings?.image?.bannerExternalUrl?.trim();
   return {
     id: c.id,
     title: sn?.title ?? "",
     description: sn?.description ?? "",
     thumbnailUrl: bestThumbnail(sn?.thumbnails),
     subscriberCount: c.statistics?.subscriberCount,
+    hiddenSubscriberCount: c.statistics?.hiddenSubscriberCount,
     videoCount: c.statistics?.videoCount,
+    bannerUrl: banner || undefined,
     uploadsPlaylistId: uploads?.trim() || undefined,
   };
 }

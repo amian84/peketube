@@ -16,8 +16,13 @@ export function logRetentionDays(): number {
 export function logDirectory(): string {
   const fromEnv = process.env.PEKETUBE_LOG_DIR?.trim();
   if (fromEnv) return fromEnv;
-  if (process.env.PEKETUBE_SERVER_DB_PATH?.trim()) {
-    return path.join(path.dirname(process.env.PEKETUBE_SERVER_DB_PATH.trim()), "logs");
+  const dbPath = process.env.PEKETUBE_SERVER_DB_PATH?.trim();
+  if (dbPath) {
+    return path.join(path.dirname(dbPath), "logs");
+  }
+  // En Docker/TrueNAS el volumen persistente suele montarse en /data; evita ./data/logs bajo /app.
+  if (process.env.NODE_ENV === "production") {
+    return "/data/logs";
   }
   return path.join(process.cwd(), "data", "logs");
 }

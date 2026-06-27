@@ -1,9 +1,11 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { applyBlacklist } from "@/lib/yt/filter";
 import {
   mapPlaylistItemResource,
   mapSearchItemToVideoDTO,
 } from "@/lib/yt/mappers";
+import { loadServerBlacklistSnapshot } from "@/lib/yt/server-blacklist";
 import type { PageDTO, PlaylistItemDTO, VideoDTO } from "@/lib/yt/types";
 import {
   guestUnavailableResponse,
@@ -17,11 +19,13 @@ import {
   parseStrictKids,
 } from "@/lib/yt/validate-request";
 
-async function fetchMadeForKidsMap(
+type VideoStatusFlags = { madeForKids: boolean; embeddable: boolean };
+
+async function fetchVideoStatusMap(
   access: YoutubeAccess,
   ids: string[],
-): Promise<Map<string, boolean>> {
-  const map = new Map<string, boolean>();
+): Promise<Map<string, VideoStatusFlags>> {
+  const map = new Map<string, VideoStatusFlags>();
   for (let i = 0; i < ids.length; i += 50) {
     const chunk = ids.slice(i, i + 50);
     const { ok, json } = await youtubeGet(access, "videos", {
@@ -31,14 +35,21 @@ async function fetchMadeForKidsMap(
     if (!ok || !json.items) continue;
     for (const item of json.items as {
       id?: string;
-      status?: { madeForKids?: boolean; selfDeclaredMadeForKids?: boolean };
+      status?: {
+        madeForKids?: boolean;
+        selfDeclaredMadeForKids?: boolean;
+        embeddable?: boolean;
+      };
     }[]) {
       if (!item.id) continue;
-      const mf =
+      const madeForKids =
         item.status?.madeForKids ??
         item.status?.selfDeclaredMadeForKids ??
         false;
-      map.set(item.id, mf);
+      map.set(item.id, {
+        madeForKids,
+        embeddable: item.status?.embeddable !== false,
+      });
     }
   }
   return map;
@@ -169,13 +180,21 @@ export async function GET(req: NextRequest) {
 
   let merged = mergeRelated(videoId, fromSearch, fromPlaylist, 24);
 
-  if (strictKids && merged.length > 0) {
-    const statusMap = await fetchMadeForKidsMap(
+  if (merged.length > 0) {
+    const statusMap = await fetchVideoStatusMap(
       access,
       merged.map((v) => v.id),
     );
-    merged = merged.filter((v) => statusMap.get(v.id) === true);
+    merged = merged.filter((v) => {
+      const flags = statusMap.get(v.id);
+      if (!flags) return false;
+      if (flags.embeddable === false) return false;
+      if (strictKids && flags.madeForKids !== true) return false;
+      return true;
+    });
   }
+
+  merged = applyBlacklist(merged, await loadServerBlacklistSnapshot(req));
 
   const page: PageDTO<VideoDTO> = {
     items: merged.slice(0, 20),

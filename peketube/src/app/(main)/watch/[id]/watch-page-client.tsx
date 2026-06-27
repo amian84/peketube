@@ -23,9 +23,16 @@ import { navigateAfterWatchBlock } from "@/lib/parental/navigate-after-watch-blo
 import { applyBlacklist, isVideoBlacklisted } from "@/lib/yt/filter";
 import {
   formatPublishedRelative,
+  formatSubscriberCount,
   formatViewCount,
 } from "@/lib/yt/format-display";
-import { useRelated, useVideo, useVideoComments } from "@/lib/yt/swr";
+import {
+  useChannel,
+  useRelated,
+  useVideo,
+  useVideoComments,
+} from "@/lib/yt/swr";
+import Image from "next/image";
 import { MAIN_BOTTOM_PAD } from "@/lib/layout/responsive";
 import { LOAD_TIMEOUT_MESSAGE, secToMs } from "@/lib/loading/timeouts";
 import { reportVideoPlayStat } from "@/lib/stats/client";
@@ -70,6 +77,12 @@ export function WatchPageClient({ videoId }: WatchPageClientProps) {
   relatedIdsRef.current = relatedVideosFiltered.map((v) => v.id);
   const embedSkipRef = useRef(false);
 
+  const channelInfo = useChannel(video?.channelId ?? null);
+  const channel = channelInfo.data?.data;
+  const channelSubs = channel?.hiddenSubscriberCount
+    ? ""
+    : formatSubscriberCount(channel?.subscriberCount);
+
   const commentsEnabled = settings.showVideoComments;
   const comments = useVideoComments(videoId, commentsEnabled);
 
@@ -82,6 +95,7 @@ export function WatchPageClient({ videoId }: WatchPageClientProps) {
   const [playerEnded, setPlayerEnded] = useState(false);
   const [playerKey, setPlayerKey] = useState(0);
   const [liked, setLiked] = useState(false);
+  const [embedError, setEmbedError] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -158,6 +172,7 @@ export function WatchPageClient({ videoId }: WatchPageClientProps) {
     hasRecordedRef.current = false;
     lastSecRef.current = 0;
     setPlayerEnded(false);
+    setEmbedError(false);
     embedSkipRef.current = false;
   }, [videoId]);
 
@@ -177,12 +192,35 @@ export function WatchPageClient({ videoId }: WatchPageClientProps) {
   const handleEmbedError = useCallback(() => {
     if (embedSkipRef.current) return;
     embedSkipRef.current = true;
-    if (
-      !goToNextVideo("Este vídeo no se puede ver aquí; pasando al siguiente…")
-    ) {
-      setToastMsg("Este vídeo no se puede reproducir en PekeTube.");
+    // Reporta a la blacklist global de embed (auto-marcado server-side, si está
+    // activo) para que no se vuelva a pintar en feed/búsqueda/relacionados.
+    if (video) {
+      void fetch("/api/embed-blacklist/report", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        credentials: "same-origin",
+        keepalive: true,
+        body: JSON.stringify({
+          videoId: video.id,
+          title: video.title,
+          channelId: video.channelId,
+          channelTitle: video.channelTitle,
+          thumbnailUrl: video.thumbnailUrl,
+          reason: "embed_blocked",
+        }),
+      }).catch(() => {});
     }
-  }, [goToNextVideo]);
+    // Solo salta al siguiente si el autoplay está activado; si no, se queda
+    // mostrando el error para que el adulto/niño sepa qué pasa.
+    if (settings.autoPlayNext) {
+      if (
+        goToNextVideo("Este vídeo no se puede ver aquí; pasando al siguiente…")
+      ) {
+        return;
+      }
+    }
+    setEmbedError(true);
+  }, [goToNextVideo, settings.autoPlayNext, video]);
 
   const copyPekeTubeLink = useCallback(async () => {
     if (!video) return;
@@ -323,6 +361,49 @@ export function WatchPageClient({ videoId }: WatchPageClientProps) {
               onProgress={handleProgress}
               onEmbedError={handleEmbedError}
             />
+            {embedError ? (
+              <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 bg-[var(--yt-app-bg)]/98 p-4 text-center">
+                <p className="text-sm font-medium text-foreground">
+                  Este vídeo no se puede reproducir en PekeTube
+                </p>
+                <p className="max-w-sm text-xs text-muted-foreground">
+                  El propietario del contenido ha bloqueado su reproducción
+                  fuera de YouTube.
+                </p>
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      setEmbedError(false);
+                      embedSkipRef.current = false;
+                      setPlayerKey((k) => k + 1);
+                    }}
+                  >
+                    Reintentar
+                  </Button>
+                  {relatedVideosFiltered.length > 0 ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => {
+                        setEmbedError(false);
+                        goToNextVideo();
+                      }}
+                    >
+                      Ver siguiente
+                    </Button>
+                  ) : null}
+                  <Link
+                    href="/"
+                    className="text-sm text-primary underline-offset-2 hover:underline"
+                  >
+                    Volver al inicio
+                  </Link>
+                </div>
+              </div>
+            ) : null}
             {playerEnded ? (
               relatedVideosFiltered.length > 0 ? (
                 <PlayerEndOverlay
@@ -363,10 +444,37 @@ export function WatchPageClient({ videoId }: WatchPageClientProps) {
               {video.title}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              {video.channelTitle}
-              {views ? ` · ${views}` : ""}
-              {when ? ` · ${when}` : ""}
+              {views ? views : ""}
+              {views && when ? " · " : ""}
+              {when ? when : ""}
             </p>
+
+            <Link
+              href={`/channel/${encodeURIComponent(video.channelId)}`}
+              className="mt-3 flex items-center gap-3 rounded-lg p-1 transition-colors hover:bg-muted"
+            >
+              <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-muted">
+                {channel?.thumbnailUrl ? (
+                  <Image
+                    src={channel.thumbnailUrl}
+                    alt=""
+                    fill
+                    className="object-cover"
+                    sizes="40px"
+                  />
+                ) : null}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-foreground">
+                  {video.channelTitle}
+                </p>
+                {channelSubs ? (
+                  <p className="truncate text-xs text-muted-foreground">
+                    {channelSubs}
+                  </p>
+                ) : null}
+              </div>
+            </Link>
 
             <div className="mt-3 flex flex-wrap gap-2">
               <Button

@@ -1,6 +1,8 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { applyBlacklist } from "@/lib/yt/filter";
 import { mapVideoResource } from "@/lib/yt/mappers";
+import { loadServerBlacklistSnapshot } from "@/lib/yt/server-blacklist";
 import type { PageDTO, VideoDTO } from "@/lib/yt/types";
 import {
   guestUnavailableResponse,
@@ -53,9 +55,11 @@ export async function GET(req: NextRequest) {
 
   const items = (json.items ?? []) as Parameters<typeof mapVideoResource>[0][];
   let videos: VideoDTO[] = items.map(mapVideoResource);
+  videos = videos.filter((v) => v.embeddable !== false);
   if (strictKids) {
     videos = videos.filter((v) => v.madeForKids === true);
   }
+  videos = applyBlacklist(videos, await loadServerBlacklistSnapshot(req));
 
   const page: PageDTO<VideoDTO> = {
     items: videos,

@@ -1,6 +1,7 @@
-# Logs
-logs
+# Log files and runtime log dirs (not app routes like src/app/logs)
 *.log
+**/data/logs/
+peketube/data/logs/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

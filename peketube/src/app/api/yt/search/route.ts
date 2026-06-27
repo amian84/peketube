@@ -1,6 +1,8 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { applyBlacklist } from "@/lib/yt/filter";
 import { mapSearchItemToVideoDTO } from "@/lib/yt/mappers";
+import { loadServerBlacklistSnapshot } from "@/lib/yt/server-blacklist";
 import type { PageDTO, VideoDTO } from "@/lib/yt/types";
 import {
   guestUnavailableResponse,
@@ -17,11 +19,13 @@ import {
   parseVideoDuration,
 } from "@/lib/yt/validate-request";
 
+type VideoStatusFlags = { madeForKids: boolean; embeddable: boolean };
+
 async function fetchVideosStatus(
   access: YoutubeAccess,
   ids: string[],
-): Promise<Map<string, boolean>> {
-  const map = new Map<string, boolean>();
+): Promise<Map<string, VideoStatusFlags>> {
+  const map = new Map<string, VideoStatusFlags>();
   for (let i = 0; i < ids.length; i += 50) {
     const chunk = ids.slice(i, i + 50);
     const { ok, json } = await youtubeGet(access, "videos", {
@@ -31,14 +35,21 @@ async function fetchVideosStatus(
     if (!ok || !json.items) continue;
     for (const item of json.items as {
       id?: string;
-      status?: { madeForKids?: boolean; selfDeclaredMadeForKids?: boolean };
+      status?: {
+        madeForKids?: boolean;
+        selfDeclaredMadeForKids?: boolean;
+        embeddable?: boolean;
+      };
     }[]) {
       if (!item.id) continue;
-      const mf =
+      const madeForKids =
         item.status?.madeForKids ??
         item.status?.selfDeclaredMadeForKids ??
         false;
-      map.set(item.id, mf);
+      map.set(item.id, {
+        madeForKids,
+        embeddable: item.status?.embeddable !== false,
+      });
     }
   }
   return map;
@@ -103,8 +114,13 @@ export async function GET(req: NextRequest) {
       access,
       videos.map((v) => v.id),
     );
-    videos = videos.filter((v) => statusMap.get(v.id) === true);
+    videos = videos.filter((v) => {
+      const flags = statusMap.get(v.id);
+      return flags?.madeForKids === true && flags.embeddable !== false;
+    });
   }
+
+  videos = applyBlacklist(videos, await loadServerBlacklistSnapshot(req));
 
   const page: PageDTO<VideoDTO> = {
     items: videos,

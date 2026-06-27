@@ -1,0 +1,10 @@
+---
+description: Git commits sin atribución Co-authored-by de Cursor
+alwaysApply: true
+---
+
+# Commits Git
+
+- **Nunca** añadir `Co-authored-by: Cursor <cursoragent@cursor.com>` ni ningún trailer de atribución del agente en mensajes de commit.
+- Si haces commit por el usuario, usa solo el mensaje acordado; la identidad del autor es la del usuario (`git log` del repo), no Cursor Agent.
+- Tras clonar en otra máquina, instalar el hook: `install -m 755 scripts/git-hooks/prepare-commit-msg .git/hooks/prepare-commit-msg`

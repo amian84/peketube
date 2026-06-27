@@ -27,6 +27,19 @@ export function formatViewCount(raw?: string): string {
   return `${n} vistas`;
 }
 
+/** Contador de suscriptores → texto corto en español (p. ej. "487 K suscriptores"). */
+export function formatSubscriberCount(raw?: string): string {
+  if (!raw?.trim()) return "";
+  const n = parseInt(raw, 10);
+  if (!Number.isFinite(n)) return "";
+  const fmt = (x: number) =>
+    x >= 10 ? String(Math.round(x)) : x.toFixed(1).replace(".0", "");
+  const noun = (one: boolean) => (one ? "suscriptor" : "suscriptores");
+  if (n >= 1_000_000) return `${fmt(n / 1_000_000)} M ${noun(false)}`;
+  if (n >= 1_000) return `${fmt(n / 1_000)} K ${noun(false)}`;
+  return `${n} ${noun(n === 1)}`;
+}
+
 /** ISO publicado → "hace X días" (aprox., español). */
 export function formatPublishedRelative(iso: string): string {
   if (!iso) return "";

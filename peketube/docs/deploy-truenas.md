@@ -407,6 +407,34 @@ peketube.tu-dominio.com {
 
 No es obligatorio si ya usas `LOG_VIEWER_USER` / `LOG_VIEWER_PASS` en el contenedor.
 
+### 12.4 Error `EACCES: permission denied, mkdir './data/logs'`
+
+Si en los logs del contenedor aparece `mkdir './data/logs'` (ruta relativa bajo `/app`),
+la app no está usando el volumen `/data`. Consecuencias típicas:
+
+- Login Google → `CallbackRouteError` / página *Server error (Configuration)*.
+- `/parental/login` → *No se pudo cargar el estado del PIN*.
+- `/logs` → *Error 404 al cargar índice de logs* o lista vacía.
+
+**Solución en el contenedor** — asegura estas variables (ya vienen en `docker-compose.yml`):
+
+```env
+PEKETUBE_SERVER_DB_PATH=/data/peketube.sqlite
+PEKETUBE_LOG_DIR=/data/logs
+```
+
+**Solución en el host TrueNAS** — el dataset montado en `/data` debe ser escribible
+por el usuario del contenedor (`nextjs`, UID **1001**):
+
+```bash
+mkdir -p /mnt/tank/apps/peketube/data/logs
+chown -R 1001:1001 /mnt/tank/apps/peketube/data
+```
+
+Tras corregir variables o permisos, reinicia el contenedor. A partir de vNext el
+código usa `/data/logs` por defecto en producción y, si aun así falla el disco,
+degrada a consola sin tumbar auth ni APIs.
+
 ---
 
 ## 13. Estadísticas de uso (`/stats`)

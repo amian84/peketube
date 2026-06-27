@@ -35,6 +35,23 @@ describe("mapVideoResource", () => {
     expect(v.id).toBe("abc");
     expect(v.durationSec).toBe(10);
     expect(v.madeForKids).toBe(true);
+    expect(v.embeddable).toBeUndefined();
+  });
+
+  it("maps status.embeddable", () => {
+    const blocked = mapVideoResource({
+      id: "no-embed",
+      snippet: { title: "T" },
+      status: { madeForKids: true, embeddable: false },
+    });
+    expect(blocked.embeddable).toBe(false);
+
+    const ok = mapVideoResource({
+      id: "embed",
+      snippet: { title: "T" },
+      status: { embeddable: true },
+    });
+    expect(ok.embeddable).toBe(true);
   });
 });
 

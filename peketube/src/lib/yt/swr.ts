@@ -3,6 +3,7 @@
 import useSWR from "swr";
 import type { SearchFetchOptions } from "@/lib/yt/client";
 import {
+  fetchChannelById,
   fetchFeedPage,
   fetchRelatedVideos,
   fetchSearchPage,
@@ -48,6 +49,13 @@ export function useSubscriptions(pageToken?: string) {
 export function useVideo(id: string | null) {
   const key = id ? (["yt-video", id] as const) : null;
   return useSWR(key, () => fetchVideoById(id!), { revalidateOnFocus: false });
+}
+
+export function useChannel(id: string | null) {
+  const key = id ? (["yt-channel", id] as const) : null;
+  return useSWR(key, () => fetchChannelById(id!), {
+    revalidateOnFocus: false,
+  });
 }
 
 export function useRelated(

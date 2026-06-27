@@ -128,6 +128,28 @@ function isLandscapeOrientation(): boolean {
   return window.matchMedia("(orientation: landscape)").matches;
 }
 
+/** Fuerza horizontal mientras dura el fullscreen (solo navegadores que lo soportan). */
+function lockOrientationLandscape(): void {
+  try {
+    const o = screen.orientation as ScreenOrientation & {
+      lock?: (orientation: "landscape" | "portrait") => Promise<void>;
+    };
+    const p = o?.lock?.("landscape");
+    if (p && typeof p.then === "function") p.catch(() => {});
+  } catch {
+    /* no soportado */
+  }
+}
+
+/** Libera el bloqueo: la pantalla vuelve a seguir el sensor (vertical si el móvil lo está). */
+function unlockOrientation(): void {
+  try {
+    screen.orientation?.unlock?.();
+  } catch {
+    /* no soportado */
+  }
+}
+
 /**
  * Reproductor acotado: iframe sin clics, controles propios en overlay (estilo YouTube).
  */
@@ -320,6 +342,7 @@ export function YouTubePlayer({
         orientationFullscreenRef.current = false;
         await exitDocumentFullscreen();
       } else {
+        orientationFullscreenRef.current = false;
         await requestElementFullscreen(el);
       }
     } catch {
@@ -443,12 +466,24 @@ export function YouTubePlayer({
     const onFullscreenChange = () => {
       const el = containerRef.current;
       const active = el != null && getFullscreenElement() === el;
+      const wasOrientationDriven = orientationFullscreenRef.current;
       setIsFullscreen(active);
       if (!active) {
         orientationFullscreenRef.current = false;
         setFsFrameSize(null);
+        // Al salir, libera el lock: vuelve a vertical salvo que el móvil esté en horizontal.
+        if (isMobileViewport()) unlockOrientation();
       } else {
         requestAnimationFrame(() => updateFsFrame());
+        // Fullscreen manual en vertical → fuerza horizontal. Si ya venía de girar
+        // el móvil (wasOrientationDriven) no se bloquea, para poder salir al girar.
+        if (
+          isMobileViewport() &&
+          !wasOrientationDriven &&
+          !isLandscapeOrientation()
+        ) {
+          lockOrientationLandscape();
+        }
       }
       if (active) setControlsVisible(true);
       scheduleHideControls();
@@ -467,28 +502,39 @@ export function YouTubePlayer({
   }, [scheduleHideControls, updateFsFrame]);
 
   useEffect(() => {
-    const syncOrientation = () => {
-      const el = containerRef.current;
-      if (!el || !ready || !isMobileViewport()) return;
-      const fs = getFullscreenElement();
-      if (isLandscapeOrientation()) {
-        if (fs !== el) {
-          orientationFullscreenRef.current = true;
-          void requestElementFullscreen(el).catch(() => {
-            orientationFullscreenRef.current = false;
-          });
+    if (!ready) return;
+
+    let lastLandscape = isLandscapeOrientation();
+
+    const onOrientationChange = () => {
+      // En móvil el layout suele actualizarse un instante después del giro.
+      window.setTimeout(() => {
+        const el = containerRef.current;
+        if (!el || !isMobileViewport()) return;
+
+        const nowLandscape = isLandscapeOrientation();
+        if (nowLandscape === lastLandscape) return;
+        lastLandscape = nowLandscape;
+
+        const fs = getFullscreenElement();
+
+        if (nowLandscape) {
+          if (fs !== el) {
+            orientationFullscreenRef.current = true;
+            void requestElementFullscreen(el).catch(() => {
+              orientationFullscreenRef.current = false;
+            });
+          }
+        } else if (fs === el && orientationFullscreenRef.current) {
+          void exitDocumentFullscreen();
+          orientationFullscreenRef.current = false;
         }
-      } else if (fs === el && isMobileViewport()) {
-        void exitDocumentFullscreen();
-        orientationFullscreenRef.current = false;
-      }
+      }, 150);
     };
-    syncOrientation();
-    window.addEventListener("orientationchange", syncOrientation);
-    window.addEventListener("resize", syncOrientation);
+
+    window.addEventListener("orientationchange", onOrientationChange);
     return () => {
-      window.removeEventListener("orientationchange", syncOrientation);
-      window.removeEventListener("resize", syncOrientation);
+      window.removeEventListener("orientationchange", onOrientationChange);
     };
   }, [ready]);
 

@@ -9,6 +9,8 @@ export interface VideoDTO {
   durationSec?: number;
   viewCount?: string;
   madeForKids?: boolean;
+  /** YouTube status.embeddable; false = no reproducible fuera de YouTube. */
+  embeddable?: boolean;
 }
 
 export interface ChannelDTO {
@@ -17,7 +19,11 @@ export interface ChannelDTO {
   description: string;
   thumbnailUrl: string;
   subscriberCount?: string;
+  /** YouTube oculta el contador de suscriptores para algunos canales. */
+  hiddenSubscriberCount?: boolean;
   videoCount?: string;
+  /** Banner del canal (`brandingSettings.image.bannerExternalUrl`). */
+  bannerUrl?: string;
   /** Lista de subidas del canal (`playlistItems` sobre este id). */
   uploadsPlaylistId?: string;
 }

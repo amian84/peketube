@@ -58,7 +58,8 @@ export function isAdminIngestPath(pathname: string): boolean {
   return (
     pathname === "/api/logs/ingest" ||
     pathname === "/api/stats/session" ||
-    pathname === "/api/stats/video"
+    pathname === "/api/stats/video" ||
+    pathname === "/api/embed-blacklist/report"
   );
 }
 
@@ -72,6 +73,10 @@ export function isAdminViewerPath(pathname: string): boolean {
     pathname === "/stats" ||
     pathname.startsWith("/stats/") ||
     pathname === "/api/stats" ||
-    pathname.startsWith("/api/stats/")
+    pathname.startsWith("/api/stats/") ||
+    pathname === "/blacklist" ||
+    pathname.startsWith("/blacklist/") ||
+    pathname === "/api/embed-blacklist" ||
+    pathname.startsWith("/api/embed-blacklist/")
   );
 }

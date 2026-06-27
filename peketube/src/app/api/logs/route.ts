@@ -5,7 +5,11 @@ import {
   isAdminViewerAuthorized,
 } from "@/lib/admin-viewer/basic-auth";
 import { isAdminViewerEnabled } from "@/lib/admin-viewer/credentials";
-import { getUsageStatsSummary } from "@/lib/stats/store";
+import {
+  logRetentionDays,
+  todayDateKey,
+} from "@/lib/logging/config";
+import { listLogDates, readLogFile } from "@/lib/logging/file-logger";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -23,5 +27,23 @@ function guard(req: NextRequest): Response | null {
 export async function GET(req: NextRequest) {
   const denied = guard(req);
   if (denied) return denied;
-  return NextResponse.json(getUsageStatsSummary());
+
+  const date = req.nextUrl.searchParams.get("date");
+  const q = req.nextUrl.searchParams.get("q") ?? undefined;
+  const tailRaw = req.nextUrl.searchParams.get("tail");
+  const tail = tailRaw ? Number(tailRaw) : undefined;
+
+  if (!date) {
+    return NextResponse.json({
+      dates: listLogDates(),
+      today: todayDateKey(),
+      retentionDays: logRetentionDays(),
+    });
+  }
+
+  const result = readLogFile(date, {
+    q,
+    tail: Number.isFinite(tail) ? tail : undefined,
+  });
+  return NextResponse.json({ date, ...result });
 }

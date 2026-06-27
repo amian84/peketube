@@ -23,7 +23,7 @@ export async function GET(
   }
 
   const { ok, status, json } = await youtubeGet(access, "channels", {
-    part: "snippet,statistics,contentDetails",
+    part: "snippet,statistics,contentDetails,brandingSettings",
     id,
   });
 

@@ -193,9 +193,32 @@ export function recordSessionPing(
   );
 }
 
-import type { UsageStatsSummary } from "@/lib/stats/types";
+import type { OAuthUserStatsRow, UsageStatsSummary } from "@/lib/stats/types";
 
-export type { UsageStatsSummary } from "@/lib/stats/types";
+export type { OAuthUserStatsRow, UsageStatsSummary } from "@/lib/stats/types";
+
+export function listOAuthUsers(): OAuthUserStatsRow[] {
+  const rows = db()
+    .prepare(
+      `SELECT user_id, email, first_seen_at, last_seen_at, login_count
+       FROM stats_oauth_user
+       ORDER BY last_seen_at DESC`,
+    )
+    .all() as {
+    user_id: string;
+    email: string | null;
+    first_seen_at: number;
+    last_seen_at: number;
+    login_count: number;
+  }[];
+  return rows.map((r) => ({
+    userId: r.user_id,
+    email: r.email,
+    firstSeenAt: r.first_seen_at,
+    lastSeenAt: r.last_seen_at,
+    loginCount: r.login_count,
+  }));
+}
 
 function startOfUtcDay(now: number): number {
   const d = new Date(now);
@@ -299,6 +322,7 @@ export function getUsageStatsSummary(now = Date.now()): UsageStatsSummary {
     oauthUsers: {
       total: oauthTotal,
       activeLast30Days: oauthActive30,
+      accounts: listOAuthUsers(),
     },
     logins: {
       today: loginsToday,

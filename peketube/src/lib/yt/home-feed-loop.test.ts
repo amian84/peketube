@@ -15,6 +15,8 @@ function v(id: string): VideoDTO {
     channelId: "c",
     channelTitle: "C",
     thumbnailUrl: "https://example.com/t.jpg",
+    description: "",
+    publishedAt: "",
   };
 }
 

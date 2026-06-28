@@ -2,7 +2,10 @@ import {
   DEFAULT_CATEGORY_IDS,
   DEFAULT_REGION_CODE,
   DEFAULT_RELEVANCE_LANGUAGE,
+  DEFAULT_SAFE_SEARCH,
   PARENT_CATEGORY_SET,
+  SAFE_SEARCH_SET,
+  type SafeSearchMode,
 } from "./constants";
 
 const REGION_RE = /^[A-Z]{2}$/;
@@ -10,6 +13,17 @@ const LANG_RE = /^[a-z]{2}(-[A-Z]{2})?$/;
 
 export function parseStrictKids(searchParams: URLSearchParams): boolean {
   return searchParams.get("strictKids") === "1";
+}
+
+/**
+ * Modo SafeSearch para `youtube.search.list`. Si la query no envía nada o el
+ * valor es inválido, devolvemos `DEFAULT_SAFE_SEARCH` (`strict`) para no
+ * relajar el filtro por accidente.
+ */
+export function parseSafeSearch(searchParams: URLSearchParams): SafeSearchMode {
+  const raw = searchParams.get("safeSearch");
+  if (raw && SAFE_SEARCH_SET.has(raw)) return raw as SafeSearchMode;
+  return DEFAULT_SAFE_SEARCH;
 }
 
 /** OQ-01-006 C: query opcional; default ES + es */

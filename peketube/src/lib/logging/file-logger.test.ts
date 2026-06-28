@@ -32,16 +32,18 @@ describe("logging config", () => {
   });
 
   it("logDirectory en producción sin env usa /data/logs", () => {
-    const prevNode = process.env.NODE_ENV;
     const prevDir = process.env.PEKETUBE_LOG_DIR;
     const prevDb = process.env.PEKETUBE_SERVER_DB_PATH;
     delete process.env.PEKETUBE_LOG_DIR;
     delete process.env.PEKETUBE_SERVER_DB_PATH;
-    process.env.NODE_ENV = "production";
-    expect(logDirectory()).toBe("/data/logs");
-    process.env.NODE_ENV = prevNode;
-    process.env.PEKETUBE_LOG_DIR = prevDir;
-    process.env.PEKETUBE_SERVER_DB_PATH = prevDb;
+    vi.stubEnv("NODE_ENV", "production");
+    try {
+      expect(logDirectory()).toBe("/data/logs");
+    } finally {
+      vi.unstubAllEnvs();
+      process.env.PEKETUBE_LOG_DIR = prevDir;
+      process.env.PEKETUBE_SERVER_DB_PATH = prevDb;
+    }
   });
 
   it("logDirectory deriva logs del directorio del SQLite", () => {

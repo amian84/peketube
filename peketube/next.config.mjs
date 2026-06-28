@@ -7,6 +7,25 @@ const nextConfig = {
   experimental: {
     serverComponentsExternalPackages: ["better-sqlite3"],
   },
+  webpack: (config, { dev }) => {
+    // SQLite/logs bajo data/ disparaban Fast Refresh en dev al registrar sesiones.
+    if (dev) {
+      const prev = config.watchOptions?.ignored;
+      const ignored = Array.isArray(prev) ? prev : prev ? [prev] : [];
+      config.watchOptions = {
+        ...config.watchOptions,
+        ignored: [
+          ...ignored,
+          "**/data/**",
+          "**/*.sqlite",
+          "**/*.sqlite-wal",
+          "**/*.sqlite-shm",
+          "**/*.log",
+        ],
+      };
+    }
+    return config;
+  },
   images: {
     remotePatterns: [
       {

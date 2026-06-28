@@ -21,7 +21,11 @@ import {
   MAX_PARENTAL_SESSION_TTL_MS,
   MIN_PARENTAL_SESSION_TTL_MS,
 } from "@/lib/parental/constants";
-import { PARENT_CATEGORY_OPTIONS } from "@/lib/yt/constants";
+import {
+  PARENT_CATEGORY_OPTIONS,
+  SAFE_SEARCH_MODES,
+  type SafeSearchMode,
+} from "@/lib/yt/constants";
 import type { ThemeMode } from "@/lib/theme/resolve-theme";
 import {
   THEME_AUTO_DARK_END_HOUR,
@@ -251,6 +255,41 @@ export default function ParentalSettingsPage() {
             }}
           />
           Activado (recomendado para niños)
+        </label>
+      </section>
+
+      <section className="space-y-2 rounded-lg border border-border p-4">
+        <h2 className="text-sm font-medium">SafeSearch (búsqueda en YouTube)</h2>
+        <p className="text-xs text-muted-foreground">
+          Filtro que aplica YouTube al buscar vídeos por texto y al obtener
+          vídeos relacionados por título. No afecta al feed por categorías ni a
+          los vídeos de un canal.
+        </p>
+        <label className="block text-xs text-muted-foreground">
+          Modo
+          <select
+            className="mt-1 w-full rounded border border-border bg-background px-2 py-2 text-sm"
+            value={s.safeSearch}
+            onChange={async (e) => {
+              const v = e.target.value as SafeSearchMode;
+              if (!SAFE_SEARCH_MODES.includes(v)) return;
+              const merged = await saveSettingsToDexie({ safeSearch: v });
+              setS(merged);
+            }}
+          >
+            <option value="strict">
+              Estricto — YouTube oculta todo lo que marque como restringido
+              (recomendado)
+            </option>
+            <option value="moderate">
+              Moderado — filtro intermedio; deja pasar algunos vídeos que
+              «estricto» bloquearía
+            </option>
+            <option value="none">
+              Ninguno — sin filtro SafeSearch; pueden aparecer vídeos
+              restringidos
+            </option>
+          </select>
         </label>
       </section>
 

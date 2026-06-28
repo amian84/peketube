@@ -15,6 +15,7 @@ import {
   parseAllowedCategoryIds,
   parseRegionCode,
   parseRelevanceLanguage,
+  parseSafeSearch,
   parseStrictKids,
   parseVideoDuration,
 } from "@/lib/yt/validate-request";
@@ -73,6 +74,7 @@ export async function GET(req: NextRequest) {
   const regionCode = parseRegionCode(searchParams);
   const relevanceLanguage = parseRelevanceLanguage(searchParams);
   const strictKids = parseStrictKids(searchParams);
+  const safeSearch = parseSafeSearch(searchParams);
   const allowedCats = parseAllowedCategoryIds(searchParams);
   const pageToken = searchParams.get("pageToken") ?? undefined;
   const singleCat = searchParams.get("videoCategoryId");
@@ -85,7 +87,7 @@ export async function GET(req: NextRequest) {
   const { ok, status, json } = await youtubeGet(access, "search", {
     part: "snippet",
     type: "video",
-    safeSearch: "strict",
+    safeSearch,
     videoEmbeddable: "true",
     maxResults: "12",
     q,

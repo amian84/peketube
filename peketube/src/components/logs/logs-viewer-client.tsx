@@ -1,13 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type LogsMeta = {
   dates: string[];
   today: string;
   retentionDays: number;
 };
+
+const REFRESH_MS = 5_000;
 
 function viewerDisabledMessage(status: number): string {
   if (status === 404) {
@@ -29,6 +31,8 @@ export function LogsViewerClient() {
   const [truncated, setTruncated] = useState(false);
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const mountedRef = useRef(true);
 
   const loadMeta = useCallback(async () => {
     const res = await fetch("/api/logs", { credentials: "same-origin" });
@@ -45,40 +49,48 @@ export function LogsViewerClient() {
     return (await res.json()) as LogsMeta;
   }, []);
 
-  const loadLines = useCallback(async (selected: string, query: string) => {
+  const loadLines = useCallback(async (selected: string, query: string, silent = false) => {
     if (!selected) {
       setLoading(false);
       return;
     }
-    setLoading(true);
+    if (!silent) setLoading(true);
+    else setRefreshing(true);
     setErr("");
-    const sp = new URLSearchParams({ date: selected, tail: "2000" });
-    if (query.trim()) sp.set("q", query.trim());
-    const res = await fetch(`/api/logs?${sp}`, { credentials: "same-origin" });
-    if (res.status === 401) {
-      setErr(
-        "Credenciales requeridas. Recarga la página e inicia sesión HTTP Basic.",
-      );
-      setLoading(false);
-      return;
+    try {
+      const sp = new URLSearchParams({ date: selected, tail: "2000" });
+      if (query.trim()) sp.set("q", query.trim());
+      const res = await fetch(`/api/logs?${sp}`, { credentials: "same-origin" });
+      if (res.status === 401) {
+        setErr(
+          "Credenciales requeridas. Recarga la página e inicia sesión HTTP Basic.",
+        );
+        return;
+      }
+      if (!res.ok) {
+        setErr(`Error ${res.status} al leer ${selected}`);
+        return;
+      }
+      const j = (await res.json()) as {
+        lines: string[];
+        totalLines: number;
+        truncated: boolean;
+      };
+      if (mountedRef.current) {
+        setLines(j.lines);
+        setTotalLines(j.totalLines);
+        setTruncated(j.truncated);
+      }
+    } finally {
+      if (mountedRef.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
-    if (!res.ok) {
-      setErr(`Error ${res.status} al leer ${selected}`);
-      setLoading(false);
-      return;
-    }
-    const j = (await res.json()) as {
-      lines: string[];
-      totalLines: number;
-      truncated: boolean;
-    };
-    setLines(j.lines);
-    setTotalLines(j.totalLines);
-    setTruncated(j.truncated);
-    setLoading(false);
   }, []);
 
   useEffect(() => {
+    mountedRef.current = true;
     void (async () => {
       const m = await loadMeta();
       if (!m) {
@@ -88,18 +100,29 @@ export function LogsViewerClient() {
       setMeta(m);
       const initial = m.dates[0] ?? m.today;
       setDate(initial);
-      await loadLines(initial, "");
+      await loadLines(initial, "", false);
     })();
+    return () => {
+      mountedRef.current = false;
+    };
   }, [loadMeta, loadLines]);
+
+  useEffect(() => {
+    if (!date) return;
+    const id = window.setInterval(() => {
+      void loadLines(date, q, true);
+    }, REFRESH_MS);
+    return () => clearInterval(id);
+  }, [date, q, loadLines]);
 
   const onDateChange = (next: string) => {
     setDate(next);
-    void loadLines(next, q);
+    void loadLines(next, q, false);
   };
 
   const onSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    void loadLines(date, q);
+    void loadLines(date, q, false);
   };
 
   return (
@@ -175,10 +198,11 @@ export function LogsViewerClient() {
           </button>
           <button
             type="button"
-            className="rounded border border-neutral-600 px-3 py-1.5 text-neutral-300 hover:bg-neutral-800"
-            onClick={() => void loadLines(date, q)}
+            className="rounded border border-neutral-600 px-3 py-1.5 text-neutral-300 hover:bg-neutral-800 disabled:opacity-50"
+            disabled={refreshing}
+            onClick={() => void loadLines(date, q, true)}
           >
-            Actualizar
+            {refreshing ? "Actualizando…" : "Actualizar"}
           </button>
         </form>
       </div>
@@ -193,8 +217,9 @@ export function LogsViewerClient() {
         {loading
           ? "Cargando…"
           : truncated
-            ? `Mostrando últimas 2000 de ${totalLines} líneas (tras filtro)`
-            : `${lines.length} línea(s)`}
+            ? `Mostrando últimas 2000 de ${totalLines} líneas (tras filtro) · auto-actualización cada ~5 s`
+            : `${lines.length} línea(s) · auto-actualización cada ~5 s`}
+        {refreshing && !loading ? " (actualizando…)" : ""}
       </p>
 
       <pre className="max-h-[70dvh] flex-1 overflow-auto whitespace-pre-wrap break-all rounded border border-neutral-700 bg-black/60 p-3 text-xs leading-relaxed text-neutral-200">

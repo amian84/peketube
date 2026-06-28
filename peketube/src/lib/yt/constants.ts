@@ -8,8 +8,21 @@ export const PARENT_CATEGORY_OPTIONS = [
 
 export type ParentCategoryId = (typeof PARENT_CATEGORY_OPTIONS)[number];
 
-/** OQ-01-001 — default A */
-export const DEFAULT_CATEGORY_IDS: readonly number[] = [15, 1, 24, 10];
+/** OQ-01-001 — default A; por defecto se permiten todas las categorías. */
+export const DEFAULT_CATEGORY_IDS: readonly number[] = [
+  ...PARENT_CATEGORY_OPTIONS,
+];
+
+/**
+ * Valores admitidos por `safeSearch` en YouTube `search.list`.
+ * - `none`: sin filtro SafeSearch.
+ * - `moderate`: filtro intermedio (default real de YouTube si no se envía).
+ * - `strict`: filtro agresivo; oculta todo lo marcado por YouTube como restringido.
+ */
+export const SAFE_SEARCH_MODES = ["none", "moderate", "strict"] as const;
+export type SafeSearchMode = (typeof SAFE_SEARCH_MODES)[number];
+export const SAFE_SEARCH_SET = new Set<string>(SAFE_SEARCH_MODES);
+export const DEFAULT_SAFE_SEARCH: SafeSearchMode = "strict";
 
 /** OQ-01-004 C — valores por defecto hasta panel parental (ms) */
 export const DEFAULT_FEED_TTL_MS = 30 * 60 * 1000;

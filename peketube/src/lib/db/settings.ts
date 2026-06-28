@@ -3,7 +3,10 @@ import {
   DEFAULT_FEED_TTL_MS,
   DEFAULT_REGION_CODE,
   DEFAULT_RELEVANCE_LANGUAGE,
+  DEFAULT_SAFE_SEARCH,
   DEFAULT_VIDEO_TTL_MS,
+  SAFE_SEARCH_SET,
+  type SafeSearchMode,
 } from "@/lib/yt/constants";
 import {
   DEFAULT_PARENTAL_SESSION_TTL_MS,
@@ -34,6 +37,11 @@ export interface PeketubeSettings {
   allowedCategoryIds: number[];
   /** OQ-01-002 B — default ON */
   strictKidsOnly: boolean;
+  /**
+   * Modo SafeSearch que se envía a YouTube `search.list` (búsqueda y vídeos
+   * relacionados por título). Default `strict`.
+   */
+  safeSearch: SafeSearchMode;
   /** OQ-01-004 C */
   feedTtlMs: number;
   videoTtlMs: number;
@@ -72,6 +80,7 @@ export interface PeketubeSettings {
 export const DEFAULT_PEKETUBE_SETTINGS: PeketubeSettings = {
   allowedCategoryIds: [...DEFAULT_CATEGORY_IDS],
   strictKidsOnly: true,
+  safeSearch: DEFAULT_SAFE_SEARCH,
   feedTtlMs: DEFAULT_FEED_TTL_MS,
   videoTtlMs: DEFAULT_VIDEO_TTL_MS,
   regionCode: DEFAULT_REGION_CODE,
@@ -104,6 +113,9 @@ function mergeSettings(raw: unknown): PeketubeSettings {
   }
   if (typeof o.strictKidsOnly === "boolean") {
     base.strictKidsOnly = o.strictKidsOnly;
+  }
+  if (typeof o.safeSearch === "string" && SAFE_SEARCH_SET.has(o.safeSearch)) {
+    base.safeSearch = o.safeSearch as SafeSearchMode;
   }
   if (typeof o.feedTtlMs === "number" && o.feedTtlMs >= 60_000) {
     base.feedTtlMs = o.feedTtlMs;

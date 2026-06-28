@@ -47,6 +47,9 @@ describe("stats store", () => {
 
     const s = getUsageStatsSummary(now + 120_000);
     expect(s.oauthUsers.total).toBe(1);
+    expect(s.oauthUsers.accounts).toHaveLength(1);
+    expect(s.oauthUsers.accounts[0]?.email).toBe("a@test.com");
+    expect(s.oauthUsers.accounts[0]?.loginCount).toBe(2);
     expect(s.logins.today).toBe(2);
     expect(s.videos.today).toBe(2);
     expect(s.videos.guestLast30Days).toBe(1);

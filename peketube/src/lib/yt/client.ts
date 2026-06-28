@@ -106,6 +106,7 @@ function appendSettingsQuery(sp: URLSearchParams, s: PeketubeSettings) {
   if (s.strictKidsOnly) sp.set("strictKids", "1");
   sp.set("regionCode", s.regionCode);
   sp.set("relevanceLanguage", s.relevanceLanguage);
+  sp.set("safeSearch", s.safeSearch);
 }
 
 /** Metadatos de vídeo en lista de bloqueados (no aplicar filtro madeForKids). */
@@ -149,7 +150,7 @@ export async function fetchSearchPage(
   if (opts?.videoDuration) sp.set("videoDuration", opts.videoDuration);
   const url = `/api/yt/search?${sp.toString()}`;
   const vd = opts?.videoDuration ?? "";
-  const cacheKey = `search:${q}:${pageToken ?? ""}:${vd}:${s.strictKidsOnly}:${s.regionCode}:${s.allowedCategoryIds.join(",")}`;
+  const cacheKey = `search:${q}:${pageToken ?? ""}:${vd}:${s.strictKidsOnly}:${s.safeSearch}:${s.regionCode}:${s.allowedCategoryIds.join(",")}`;
   return fetchJsonWithCache(cacheKey, s.feedTtlMs, url);
 }
 
@@ -237,7 +238,7 @@ export async function fetchRelatedVideos(
   sp.set("channelId", channelId);
   appendSettingsQuery(sp, s);
   const url = `/api/yt/related?${sp.toString()}`;
-  const cacheKey = `related:${videoId}:${title.slice(0, 40)}:${channelId}:${s.strictKidsOnly}`;
+  const cacheKey = `related:${videoId}:${title.slice(0, 40)}:${channelId}:${s.strictKidsOnly}:${s.safeSearch}`;
   return fetchJsonWithCache(cacheKey, s.videoTtlMs, url);
 }
 
